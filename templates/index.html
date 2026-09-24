@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traffic Intelligence Dashboard</title>
+    <style>
+        :root {
+            --bg: #0f172a;       
+            --surface: #1e293b;  
+            --accent: #3b82f6;   
+            --text: #f8fafc;     
+        }
+        body { 
+            background-color: var(--bg); 
+            color: var(--text); 
+            font-family: system-ui, -apple-system, sans-serif; 
+            margin: 0; 
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        header {
+            background-color: var(--surface);
+            padding: 15px 0;
+            text-align: center;
+            border-bottom: 2px solid var(--accent);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+        h2 {
+            margin: 0;
+            font-size: 1.4rem;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+        .badge {
+            display: inline-block;
+            margin-top: 6px;
+            font-size: 0.8rem;
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+            padding: 4px 12px;
+            border-radius: 20px;
+            letter-spacing: 0.5px;
+        }
+        .video-container { 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 95vh; 
+            width: 100%; 
+            padding: 1.5vh;
+            box-sizing: border-box;
+        }
+        img.feed { 
+            max-width: 100%; 
+            max-height: 100%; 
+            object-fit: contain; 
+            aspect-ratio: 1 / 1; 
+            border: 4px solid var(--surface); 
+            border-radius: 12px; 
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.7); 
+            background-color: #000;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h2>Smart Intersection Monitor</h2>
+        <div class="badge">● NCNN Engine Active | 4-Node Cluster</div>
+    </header>
+    <div class="video-container">
+        <img class="feed" src="/video_feed" alt="Live Multi-Camera Feed">
+    </div>
+</body>
+</html>
