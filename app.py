@@ -74,7 +74,7 @@ def generate_frames():
         for r in results:
             for box in r.boxes:
                 conf = float(box.conf[0])
-                if conf >= 0.3:
+                if conf >= 0.2:
                     x1, y1, x2, y2 = map(int, box.xyxy[0])
                     w, h = x2 - x1, y2 - y1
                     cls = int(box.cls[0])
