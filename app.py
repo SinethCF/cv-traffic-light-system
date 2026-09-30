@@ -5,9 +5,13 @@ import numpy as np
 import cvzone
 import threading
 import time
+from traffic_controller import TrafficController
 
 app = Flask(__name__)
 model = YOLO('yolo26n_ncnn_model', task='detect')
+# Initialize the state machine globally so the API route can read it
+controller = TrafficController()
+system_state = {"active_config": "C1", "locked_next": "C2", "countdown": 0}
 
 frame_w, frame_h = 640, 640
 dimensions = (frame_w, frame_h)
@@ -123,6 +127,10 @@ def generate_frames():
         elif current_direction == "WEST":
             intersection_counts["West_1"] = lane1_count
             intersection_counts["West_2"] = lane2_count
+
+        # Update the system state
+        global system_state
+        system_state = controller.update(intersection_counts)
         
         # --- 3. 2x2 GRID ASSEMBLY ---
         grid_frames = []
@@ -170,7 +178,11 @@ def data_dashboard():
 # --- NEW ROUTE 2: The hidden API that serves the dictionary as raw JSON ---
 @app.route('/api/counts')
 def api_counts():
-    return jsonify(intersection_counts)
+    # We now send both the counts and the state machine data over the API
+    return jsonify({
+        "counts": intersection_counts,
+        "state": system_state
+    })
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8080, debug=False)

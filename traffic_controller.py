@@ -1,0 +1,102 @@
+import time
+
+class TrafficController:
+    def __init__(self):
+        # --- 1. ENGINEERING CONSTANTS ---
+        self.MIN_TIME = 15.0
+        self.MAX_TIME = 90.0
+        self.k = 2.0         # Seconds per vehicle baseline
+        self.w_n = 1.0       # Linear weight for vehicle count
+        self.w_t = 0.005     # Quadratic weight for wait time
+
+        # --- 2. LANE MEMORY & TIMERS ---
+        self.lanes = ["North_1", "North_2", "East_1", "East_2", 
+                      "South_1", "South_2", "West_1", "West_2"]
+        # Tracks how long vehicles have been waiting (in seconds)
+        self.wait_timers = {lane: 0.0 for lane in self.lanes}
+        
+        # --- 3. THE 6 COLLISION-FREE CONFIGURATIONS ---
+        self.configs = {
+            "C1": ["North_1", "South_1"],
+            "C2": ["East_1", "West_1"],
+            "C3": ["North_1", "North_2"],
+            "C4": ["South_1", "South_2"],
+            "C5": ["West_1", "West_2"],
+            "C6": ["East_1", "East_2"]
+        }
+
+        # --- 4. STATE MACHINE INITIALIZATION ---
+        self.active_config = "C1"      # Position 1 (Currently Green)
+        self.locked_next = "C2"        # Position 2 (Locked in for next Green)
+        self.time_remaining = self.MIN_TIME
+        self.last_tick = time.time()
+
+    def calculate_green_time(self, active_lanes, counts):
+        """Calculates fractional T_green bounded by MIN and MAX"""
+        n_winning = sum(counts[lane] for lane in active_lanes)
+        n_total = sum(counts.values())
+        
+        # Prevent division by zero if intersection is totally empty
+        if n_total == 0:
+            return self.MIN_TIME 
+            
+        fraction = n_winning / n_total
+        t_calc = (n_winning * self.k) * (1 + fraction)
+        
+        return max(self.MIN_TIME, min(self.MAX_TIME, t_calc))
+
+    def get_priorities(self, counts):
+        """Calculates P = w_n*n + w_t*t^2 for all waiting configurations"""
+        scores = {}
+        for config_id, active_lanes in self.configs.items():
+            # Skip the config that already has the green light
+            if config_id == self.active_config:
+                continue 
+            
+            score = 0
+            for lane in active_lanes:
+                n = counts[lane]
+                t = self.wait_timers[lane]
+                # Priority formula
+                score += (self.w_n * n) + (self.w_t * (t ** 2))
+            scores[config_id] = score
+        return scores
+
+    def update(self, counts):
+        """The main loop triggered every frame to evaluate the state"""
+        current_time = time.time()
+        dt = current_time - self.last_tick
+        self.last_tick = current_time
+
+        # 1. UPDATE WAIT TIMERS
+        active_lanes = self.configs[self.active_config]
+        for lane in self.lanes:
+            if lane not in active_lanes and counts[lane] > 0:
+                # Accumulate wait time only if there is at least 1 car waiting
+                self.wait_timers[lane] += dt
+            elif lane in active_lanes:
+                # Instantly reset timers for lanes currently getting a green light
+                self.wait_timers[lane] = 0.0 
+
+        # 2. TICK DOWN ACTIVE GREEN LIGHT
+        self.time_remaining -= dt
+
+        # 3. THE HANDOVER TRIGGER (When countdown hits 0)
+        if self.time_remaining <= 0:
+            # Shift Position 2 into Position 1
+            self.active_config = self.locked_next
+            
+            # Calculate the new time allocation based on exact counts at this millisecond
+            new_active_lanes = self.configs[self.active_config]
+            self.time_remaining = self.calculate_green_time(new_active_lanes, counts)
+            
+            # Run the priority engine on the remaining 5 configs to lock in the new Position 2
+            scores = self.get_priorities(counts)
+            self.locked_next = max(scores, key=scores.get) 
+
+        # Return the clean system state to app.py
+        return {
+            "active_config": self.active_config,
+            "locked_next": self.locked_next,
+            "countdown": max(0, int(self.time_remaining))
+        }

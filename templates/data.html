@@ -18,20 +18,25 @@
             color: var(--text); 
             font-family: system-ui, -apple-system, sans-serif; 
             margin: 0; 
-            padding: 2rem;
+            padding: 1rem; /* Compressed from 2rem */
             display: flex;
             flex-direction: column;
             align-items: center;
+            height: 100vh;
+            box-sizing: border-box;
+            overflow: hidden; /* Strictly prevents vertical scrolling */
         }
         header {
             text-align: center;
-            margin-bottom: 2rem;
+            margin-bottom: 0.5rem; /* Compressed from 2rem */
         }
-        h1 { margin: 0; letter-spacing: 1px; }
+        h1 { margin: 0; font-size: 1.6rem; letter-spacing: 1px; }
+        header p { margin: 0.2rem 0 0.5rem 0; font-size: 0.9rem; }
+        
         .grid-container {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 2rem;
+            gap: 1rem; /* Compressed from 2rem */
             width: 100%;
             max-width: 800px;
         }
@@ -39,25 +44,31 @@
             background-color: var(--surface);
             border-top: 4px solid var(--accent);
             border-radius: 12px;
-            padding: 1.5rem;
+            padding: 0.8rem; /* Compressed from 1.5rem */
             box-shadow: 0 10px 25px rgba(0,0,0,0.5);
             text-align: center;
         }
         .node-card h2 {
-            margin-top: 0;
+            margin: 0;
             color: var(--accent);
             letter-spacing: 2px;
+            font-size: 1.2rem;
         }
         .lane-stats {
             display: flex;
             justify-content: space-around;
-            margin-top: 1rem;
-            font-size: 1.2rem;
+            margin-top: 0.5rem; /* Compressed from 1rem */
+            font-size: 1rem;
             font-weight: bold;
         }
         .lane1 { color: var(--green); }
         .lane2 { color: var(--red); }
-        .value { font-size: 2.5rem; display: block; margin-top: 5px; color: var(--text); }
+        .value { 
+            font-size: 2.2rem; /* Scaled down slightly */
+            display: block; 
+            margin-top: 2px; 
+            color: var(--text); 
+        }
     </style>
 </head>
 <body>
@@ -66,6 +77,13 @@
         <h1>Intersection Data Matrix</h1>
         <p style="color: #94a3b8;">Real-time dictionary polling active</p>
     </header>
+
+    <!-- WIDE CONTROL PANEL WITH COMPRESSED HEIGHT -->
+    <div id="control-panel" style="background: var(--surface); width: 100%; max-width: 800px; padding: 10px; border-radius: 12px; margin-bottom: 1rem; text-align: center; border: 2px solid var(--green); box-sizing: border-box;">
+        <h2 style="color: var(--green); margin: 0; font-size: 1.2rem;">ACTIVE: <span id="active-config">C1</span></h2>
+        <div style="font-size: 3rem; font-weight: bold; margin: 5px 0;" id="countdown-timer">00s</div>
+        <div style="color: var(--accent); font-weight: bold; font-size: 0.9rem;">LOCKED NEXT: <span id="locked-next">C2</span></div>
+    </div>
 
     <div class="grid-container">
         <!-- NORTH NODE -->
@@ -103,28 +121,29 @@
     </div>
 
     <script>
-        // This function pings the hidden Flask API every 1000 milliseconds (1 second)
         async function fetchTrafficData() {
             try {
                 const response = await fetch('/api/counts');
-                const data = await response.json();
+                const data = await response.json(); 
                 
-                // Dynamically update the HTML elements with the new dictionary numbers
-                document.getElementById('North_1').innerText = data.North_1;
-                document.getElementById('North_2').innerText = data.North_2;
-                document.getElementById('East_1').innerText = data.East_1;
-                document.getElementById('East_2').innerText = data.East_2;
-                document.getElementById('South_1').innerText = data.South_1;
-                document.getElementById('South_2').innerText = data.South_2;
-                document.getElementById('West_1').innerText = data.West_1;
-                document.getElementById('West_2').innerText = data.West_2;
+                document.getElementById('active-config').innerText = data.state.active_config;
+                document.getElementById('countdown-timer').innerText = data.state.countdown + "s";
+                document.getElementById('locked-next').innerText = data.state.locked_next;
+
+                document.getElementById('North_1').innerText = data.counts.North_1;
+                document.getElementById('North_2').innerText = data.counts.North_2;
+                document.getElementById('East_1').innerText = data.counts.East_1;
+                document.getElementById('East_2').innerText = data.counts.East_2;
+                document.getElementById('South_1').innerText = data.counts.South_1;
+                document.getElementById('South_2').innerText = data.counts.South_2;
+                document.getElementById('West_1').innerText = data.counts.West_1;
+                document.getElementById('West_2').innerText = data.counts.West_2;
                 
             } catch (error) {
                 console.error("Error fetching traffic data:", error);
             }
         }
 
-        // Start the continuous polling loop
         setInterval(fetchTrafficData, 1000);
     </script>
 </body>
