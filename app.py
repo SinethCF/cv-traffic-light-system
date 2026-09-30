@@ -49,6 +49,17 @@ if bg_mask is not None:
 
 target_classes = [1, 2, 3, 5, 7]
 
+# Cardinal directions mapping for the 4 cameras
+directions = ["NORTH", "EAST", "SOUTH", "WEST"]
+
+# Memory bank to store the 8 lane variables continuously 
+intersection_counts = {
+    "North_1": 0, "North_2": 0,
+    "East_1": 0,  "East_2": 0,
+    "South_1": 0, "South_2": 0,
+    "West_1": 0,  "West_2": 0
+}
+
 def generate_frames():
     active_cam_index = 0
     frames_on_current_cam = 0
@@ -94,20 +105,38 @@ def generate_frames():
         cv2.polylines(active_img, [lane1_area], True, (0, 255, 0), 1)
         cv2.polylines(active_img, [lane2_area], True, (255, 0, 0), 1)
         
+        # Keep the standard lane text rendering on the active view
         cvzone.putTextRect(active_img, f"Lane 1: {lane1_count}", (20, 50), scale=2, thickness=2, colorR=(0, 200, 0))
         cvzone.putTextRect(active_img, f"Lane 2: {lane2_count}", (20, 100), scale=2, thickness=2, colorR=(200, 0, 0))
+        
+        # Update the master variables based on which camera is currently active
+        current_direction = directions[active_cam_index]
+        if current_direction == "NORTH":
+            intersection_counts["North_1"] = lane1_count
+            intersection_counts["North_2"] = lane2_count
+        elif current_direction == "EAST":
+            intersection_counts["East_1"] = lane1_count
+            intersection_counts["East_2"] = lane2_count
+        elif current_direction == "SOUTH":
+            intersection_counts["South_1"] = lane1_count
+            intersection_counts["South_2"] = lane2_count
+        elif current_direction == "WEST":
+            intersection_counts["West_1"] = lane1_count
+            intersection_counts["West_2"] = lane2_count
         
         # --- 3. 2x2 GRID ASSEMBLY ---
         grid_frames = []
         for i, frame in enumerate(current_frames):
             small_frame = cv2.resize(frame, (320, 320))
             
+            # Label cameras dynamically as NORTH, EAST, SOUTH, WEST
+            dir_label = directions[i]
+            
             if i == active_cam_index:
                 cv2.rectangle(small_frame, (0, 0), (320, 320), (0, 0, 255), 6)
-                # Positioned top-right and scaled down to avoid covering lane stats
-                cvzone.putTextRect(small_frame, f"CAM {i+1} (PROCESSING)", (125, 25), scale=0.8, thickness=1, colorR=(0, 0, 255))
+                cvzone.putTextRect(small_frame, f"{dir_label} (PROCESSING)", (135, 25), scale=0.75, thickness=1, colorR=(0, 0, 255))
             else:
-                cvzone.putTextRect(small_frame, f"CAM {i+1} (LIVE)", (215, 25), scale=0.8, thickness=1, colorR=(100, 100, 100))
+                cvzone.putTextRect(small_frame, f"{dir_label} (LIVE)", (205, 25), scale=0.75, thickness=1, colorR=(100, 100, 100))
                 
             grid_frames.append(small_frame)
             
@@ -115,6 +144,7 @@ def generate_frames():
         bottom_row = np.hstack((grid_frames[2], grid_frames[3]))
         final_grid = np.vstack((top_row, bottom_row))
 
+        # Encode the final grid as a JPEG image
         ret, buffer = cv2.imencode('.jpg', final_grid, [cv2.IMWRITE_JPEG_QUALITY, 80])
         yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
 
