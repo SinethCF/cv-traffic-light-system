@@ -1,4 +1,4 @@
-from flask import Flask, Response, render_template
+from flask import Flask, Response, render_template, jsonify
 from ultralytics import YOLO
 import cv2
 import numpy as np
@@ -161,6 +161,16 @@ def index():
 @app.route('/video_feed')
 def video_feed():
     return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+# --- NEW ROUTE 1: Serves the new sleek HTML grid page ---
+@app.route('/data')
+def data_dashboard():
+    return render_template('data.html')
+
+# --- NEW ROUTE 2: The hidden API that serves the dictionary as raw JSON ---
+@app.route('/api/counts')
+def api_counts():
+    return jsonify(intersection_counts)
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8080, debug=False)

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Traffic Data Grid</title>
+    <style>
+        :root {
+            --bg: #0f172a;       
+            --surface: #1e293b;  
+            --accent: #3b82f6;   
+            --text: #f8fafc;
+            --green: #22c55e;
+            --red: #ef4444;     
+        }
+        body { 
+            background-color: var(--bg); 
+            color: var(--text); 
+            font-family: system-ui, -apple-system, sans-serif; 
+            margin: 0; 
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        h1 { margin: 0; letter-spacing: 1px; }
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 2rem;
+            width: 100%;
+            max-width: 800px;
+        }
+        .node-card {
+            background-color: var(--surface);
+            border-top: 4px solid var(--accent);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            text-align: center;
+        }
+        .node-card h2 {
+            margin-top: 0;
+            color: var(--accent);
+            letter-spacing: 2px;
+        }
+        .lane-stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 1rem;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        .lane1 { color: var(--green); }
+        .lane2 { color: var(--red); }
+        .value { font-size: 2.5rem; display: block; margin-top: 5px; color: var(--text); }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Intersection Data Matrix</h1>
+        <p style="color: #94a3b8;">Real-time dictionary polling active</p>
+    </header>
+
+    <div class="grid-container">
+        <!-- NORTH NODE -->
+        <div class="node-card">
+            <h2>NORTH NODE</h2>
+            <div class="lane-stats">
+                <div class="lane1">Lane 1 <span class="value" id="North_1">0</span></div>
+                <div class="lane2">Lane 2 <span class="value" id="North_2">0</span></div>
+            </div>
+        </div>
+        <!-- EAST NODE -->
+        <div class="node-card">
+            <h2>EAST NODE</h2>
+            <div class="lane-stats">
+                <div class="lane1">Lane 1 <span class="value" id="East_1">0</span></div>
+                <div class="lane2">Lane 2 <span class="value" id="East_2">0</span></div>
+            </div>
+        </div>
+        <!-- SOUTH NODE -->
+        <div class="node-card">
+            <h2>SOUTH NODE</h2>
+            <div class="lane-stats">
+                <div class="lane1">Lane 1 <span class="value" id="South_1">0</span></div>
+                <div class="lane2">Lane 2 <span class="value" id="South_2">0</span></div>
+            </div>
+        </div>
+        <!-- WEST NODE -->
+        <div class="node-card">
+            <h2>WEST NODE</h2>
+            <div class="lane-stats">
+                <div class="lane1">Lane 1 <span class="value" id="West_1">0</span></div>
+                <div class="lane2">Lane 2 <span class="value" id="West_2">0</span></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // This function pings the hidden Flask API every 1000 milliseconds (1 second)
+        async function fetchTrafficData() {
+            try {
+                const response = await fetch('/api/counts');
+                const data = await response.json();
+                
+                // Dynamically update the HTML elements with the new dictionary numbers
+                document.getElementById('North_1').innerText = data.North_1;
+                document.getElementById('North_2').innerText = data.North_2;
+                document.getElementById('East_1').innerText = data.East_1;
+                document.getElementById('East_2').innerText = data.East_2;
+                document.getElementById('South_1').innerText = data.South_1;
+                document.getElementById('South_2').innerText = data.South_2;
+                document.getElementById('West_1').innerText = data.West_1;
+                document.getElementById('West_2').innerText = data.West_2;
+                
+            } catch (error) {
+                console.error("Error fetching traffic data:", error);
+            }
+        }
+
+        // Start the continuous polling loop
+        setInterval(fetchTrafficData, 1000);
+    </script>
+</body>
+</html>
