@@ -4,6 +4,6 @@
 # Python Cache
 __pycache__/
 
-# Ignore virtual environments (even if you don't have one, a teammate might)
+# Ignore virtual environments
 venv/
 .venv/
