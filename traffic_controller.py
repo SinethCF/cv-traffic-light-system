@@ -17,8 +17,8 @@ class TrafficController:
         
         # --- 3. THE 6 COLLISION-FREE CONFIGURATIONS ---
         self.configs = {
-            "C1": ["North_1", "South_1"],
-            "C2": ["East_1", "West_1"],
+            "C1": ["North_2", "South_2"],
+            "C2": ["East_2", "West_2"],
             "C3": ["North_1", "North_2"],
             "C4": ["South_1", "South_2"],
             "C5": ["West_1", "West_2"],
