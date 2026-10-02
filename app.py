@@ -56,6 +56,24 @@ target_classes = [1, 2, 3, 5, 7]
 # Cardinal directions mapping for the 4 cameras
 directions = ["NORTH", "EAST", "SOUTH", "WEST"]
 
+# --- NEW 1: VEHICLE SPACE WEIGHTS (PCE) & CAPACITY ---
+VEHICLE_WEIGHTS = {
+    1: 0.5,  # Bicycle takes up half a car space
+    2: 1.0,  # Car is the standard baseline
+    3: 0.5,  # Motorcycle
+    5: 3.0,  # Bus takes up 3 car spaces
+    7: 3.0   # Truck takes up 3 car spaces
+}
+MAX_LANE_CAPACITY = 15.0  # The physical limit of your camera view (equivalent to 15 cars)
+
+# --- NEW 2: SATURATION TRACKER ---
+saturation_tracker = {
+    "North_1": {"is_full": False}, "North_2": {"is_full": False},
+    "East_1":  {"is_full": False}, "East_2":  {"is_full": False},
+    "South_1": {"is_full": False}, "South_2": {"is_full": False},
+    "West_1":  {"is_full": False}, "West_2":  {"is_full": False}
+}
+
 # Memory bank to store the 8 lane variables continuously 
 intersection_counts = {
     "North_1": 0, "North_2": 0,
@@ -97,21 +115,37 @@ def generate_frames():
                     cx, cy = x1 + w // 2, y1 + h // 2
 
                     if 0 <= cy < frame_h and 0 <= cx < frame_w:
+                        # Grab the weight for this specific vehicle type (default to 1.0)
+                        weight = VEHICLE_WEIGHTS.get(cls, 1.0)
+
                         if lane1_mask[cy, cx] == 255:
-                            lane1_count += 1
+                            lane1_count += weight
                             cvzone.cornerRect(active_img, (x1, y1, w, h), colorC=(0, 255, 0), t=1)
                             cvzone.putTextRect(active_img, f"{name}", (x1, max(35, y1 - 10)), scale=1, thickness=1, colorR=(0, 200, 0))
+
                         elif lane2_mask[cy, cx] == 255:
-                            lane2_count += 1
+                            lane2_count += weight
                             cvzone.cornerRect(active_img, (x1, y1, w, h), colorC=(255, 0, 0), t=1)
                             cvzone.putTextRect(active_img, f"{name}", (x1, max(35, y1 - 10)), scale=1, thickness=1, colorR=(200, 0, 0))
 
         cv2.polylines(active_img, [lane1_area], True, (0, 255, 0), 1)
         cv2.polylines(active_img, [lane2_area], True, (255, 0, 0), 1)
         
-        # Keep the standard lane text rendering on the active view
-        cvzone.putTextRect(active_img, f"Lane 1: {lane1_count}", (20, 50), scale=2, thickness=2, colorR=(0, 200, 0))
-        cvzone.putTextRect(active_img, f"Lane 2: {lane2_count}", (20, 100), scale=2, thickness=2, colorR=(200, 0, 0))
+        # Keep the standard lane text rendering (formatted to 1 decimal place for neatness)
+        cvzone.putTextRect(active_img, f"Lane 1: {lane1_count:.1f}", (20, 50), scale=2, thickness=2, colorR=(0, 200, 0))
+        cvzone.putTextRect(active_img, f"Lane 2: {lane2_count:.1f}", (20, 100), scale=2, thickness=2, colorR=(200, 0, 0))
+
+        # --- TEST MODE: CAPACITY CHECK ONLY (No Red Light Filter) ---
+        def check_saturation(lane_name, current_capacity):
+            tracker = saturation_tracker[lane_name]
+            
+            # CAPACITY CHECK: Did the weighted score hit the physical camera limit?
+            # This will now trigger even if the light is green!
+            tracker["is_full"] = (current_capacity >= MAX_LANE_CAPACITY)
+
+        # Update the master variables based on which camera is currently active
+        current_direction = directions[active_cam_index]
+        dir_formatted = current_direction.capitalize()
         
         # Update the master variables based on which camera is currently active
         current_direction = directions[active_cam_index]
@@ -127,6 +161,16 @@ def generate_frames():
         elif current_direction == "WEST":
             intersection_counts["West_1"] = lane1_count
             intersection_counts["West_2"] = lane2_count
+
+        # Run the saturation checks for the active camera
+        check_saturation(f"{dir_formatted}_1", lane1_count)
+        check_saturation(f"{dir_formatted}_2", lane2_count)
+
+        # --- Visual Saturation Alerts ---
+        if saturation_tracker[f"{dir_formatted}_1"]["is_full"]:
+            cvzone.putTextRect(active_img, "L1 SATURATED", (20, 150), scale=2, thickness=2, colorR=(0, 0, 255))
+        if saturation_tracker[f"{dir_formatted}_2"]["is_full"]:
+            cvzone.putTextRect(active_img, "L2 SATURATED", (20, 200), scale=2, thickness=2, colorR=(0, 0, 255))
 
         # Update the system state
         global system_state
