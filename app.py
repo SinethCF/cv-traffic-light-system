@@ -16,7 +16,7 @@ system_state = {"active_config": "C1", "locked_next": "C2", "countdown": 0}
 frame_w, frame_h = 640, 640
 dimensions = (frame_w, frame_h)
 
-# --- 1. REAL-TIME CAMERA SIMULATOR ---
+# --- REAL-TIME CAMERA SIMULATOR ---
 class LiveStreamSimulator:
     def __init__(self, src):
         self.cap = cv2.VideoCapture(src)
@@ -56,7 +56,7 @@ target_classes = [1, 2, 3, 5, 7]
 # Cardinal directions mapping for the 4 cameras
 directions = ["NORTH", "EAST", "SOUTH", "WEST"]
 
-# --- NEW 1: VEHICLE SPACE WEIGHTS (PCE) & CAPACITY ---
+# --- VEHICLE SPACE WEIGHTS (PCE) & CAPACITY ---
 VEHICLE_WEIGHTS = {
     1: 0.5,  # Bicycle takes up half a car space
     2: 1.0,  # Car is the standard baseline
@@ -64,9 +64,9 @@ VEHICLE_WEIGHTS = {
     5: 3.0,  # Bus takes up 3 car spaces
     7: 3.0   # Truck takes up 3 car spaces
 }
-MAX_LANE_CAPACITY = 15.0  # The physical limit of your camera view (equivalent to 15 cars)
+MAX_LANE_CAPACITY = 16.0  # The physical limit of your camera view (equivalent to 16 cars)
 
-# --- NEW 2: SATURATION TRACKER ---
+# --- SATURATION TRACKER ---
 saturation_tracker = {
     "North_1": {"is_full": False}, "North_2": {"is_full": False},
     "East_1":  {"is_full": False}, "East_2":  {"is_full": False},
@@ -138,10 +138,20 @@ def generate_frames():
         # --- TEST MODE: CAPACITY CHECK ONLY (No Red Light Filter) ---
         def check_saturation(lane_name, current_capacity):
             tracker = saturation_tracker[lane_name]
+
+            # RED LIGHT FILTER: Ask the controller which lanes currently have a GREEN light
+            active_green_lanes = controller.configs[system_state["active_config"]]
+
+            # If this lane is green, it's emptying out. Ignore saturation!
+            if lane_name in active_green_lanes:
+                tracker["is_full"] = False
+                return
             
             # CAPACITY CHECK: Did the weighted score hit the physical camera limit?
-            # This will now trigger even if the light is green!
-            tracker["is_full"] = (current_capacity >= MAX_LANE_CAPACITY)
+            if current_capacity >= MAX_LANE_CAPACITY:
+                tracker["is_full"] = True
+            else:
+                tracker["is_full"] = False
 
         # Update the master variables based on which camera is currently active
         current_direction = directions[active_cam_index]
@@ -176,7 +186,7 @@ def generate_frames():
         global system_state
         system_state = controller.update(intersection_counts)
         
-        # --- 3. 2x2 GRID ASSEMBLY ---
+        # --- 2x2 GRID ASSEMBLY ---
         grid_frames = []
         for i, frame in enumerate(current_frames):
             small_frame = cv2.resize(frame, (320, 320))
@@ -200,7 +210,7 @@ def generate_frames():
         ret, buffer = cv2.imencode('.jpg', final_grid, [cv2.IMWRITE_JPEG_QUALITY, 80])
         yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
 
-        # --- 4. SWITCHER LOGIC ---
+        # --- SWITCHER LOGIC ---
         frames_on_current_cam += 1
         if frames_on_current_cam >= MAX_FRAMES_PER_CAM:
             active_cam_index = (active_cam_index + 1) % 4
@@ -214,12 +224,12 @@ def index():
 def video_feed():
     return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
-# --- NEW ROUTE 1: Serves the new sleek HTML grid page ---
+# --- ROUTE 1: Serves the new sleek HTML grid page ---
 @app.route('/data')
 def data_dashboard():
     return render_template('data.html')
 
-# --- NEW ROUTE 2: The hidden API that serves the dictionary as raw JSON ---
+# --- ROUTE 2: The hidden API that serves the dictionary as raw JSON ---
 @app.route('/api/counts')
 def api_counts():
     # We now send both the counts and the state machine data over the API
