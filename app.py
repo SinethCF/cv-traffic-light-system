@@ -67,7 +67,7 @@ intersection_counts = {
 def generate_frames():
     active_cam_index = 0
     frames_on_current_cam = 0
-    MAX_FRAMES_PER_CAM = 15  
+    MAX_FRAMES_PER_CAM = 10  
     
     while True:
         current_frames = []
