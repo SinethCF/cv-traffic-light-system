@@ -86,8 +86,18 @@ def generate_frames():
     active_cam_index = 0
     frames_on_current_cam = 0
     MAX_FRAMES_PER_CAM = 10  
-    
+
+    # Variables to track the highest count during the frame burst (MAX_FRAMES_PER_CAM) for each lane
+    burst_max_lane1 = 0.0
+    burst_max_lane2 = 0.0
+
+    # The main loop that continuously processes frames from the cameras
     while True:
+        # Reset the burst max counters at the start of each new camera cycle
+        if frames_on_current_cam == 0:
+            burst_max_lane1 = 0.0
+            burst_max_lane2 = 0.0
+
         current_frames = []
         for stream in streams:
             ret, frame = stream.read()
@@ -128,14 +138,18 @@ def generate_frames():
                             cvzone.cornerRect(active_img, (x1, y1, w, h), colorC=(255, 0, 0), t=1)
                             cvzone.putTextRect(active_img, f"{name}", (x1, max(35, y1 - 10)), scale=1, thickness=1, colorR=(200, 0, 0))
 
+        # Update the burst max values if the current counts are higher
+        burst_max_lane1 = max(burst_max_lane1, lane1_count)
+        burst_max_lane2 = max(burst_max_lane2, lane2_count)
+
         cv2.polylines(active_img, [lane1_area], True, (0, 255, 0), 1)
         cv2.polylines(active_img, [lane2_area], True, (255, 0, 0), 1)
         
         # Keep the standard lane text rendering (formatted to 1 decimal place for neatness)
-        cvzone.putTextRect(active_img, f"Lane 1: {lane1_count:.1f}", (20, 50), scale=2, thickness=2, colorR=(0, 200, 0))
-        cvzone.putTextRect(active_img, f"Lane 2: {lane2_count:.1f}", (20, 100), scale=2, thickness=2, colorR=(200, 0, 0))
+        cvzone.putTextRect(active_img, f"Lane 1: {burst_max_lane1:.1f}", (20, 50), scale=2, thickness=2, colorR=(0, 200, 0))
+        cvzone.putTextRect(active_img, f"Lane 2: {burst_max_lane2:.1f}", (20, 100), scale=2, thickness=2, colorR=(200, 0, 0))
 
-        # --- TEST MODE: CAPACITY CHECK ONLY (No Red Light Filter) ---
+        # --- RED-LIGHT FILTER & CAPACITY CHECK ---
         def check_saturation(lane_name, current_capacity):
             tracker = saturation_tracker[lane_name]
 
@@ -157,24 +171,23 @@ def generate_frames():
         current_direction = directions[active_cam_index]
         dir_formatted = current_direction.capitalize()
         
-        # Update the master variables based on which camera is currently active
-        current_direction = directions[active_cam_index]
+        # Update the intersection_counts dictionary based on the active camera's direction with the burst max values
         if current_direction == "NORTH":
-            intersection_counts["North_1"] = lane1_count
-            intersection_counts["North_2"] = lane2_count
+            intersection_counts["North_1"] = burst_max_lane1
+            intersection_counts["North_2"] = burst_max_lane2
         elif current_direction == "EAST":
-            intersection_counts["East_1"] = lane1_count
-            intersection_counts["East_2"] = lane2_count
+            intersection_counts["East_1"] = burst_max_lane1
+            intersection_counts["East_2"] = burst_max_lane2
         elif current_direction == "SOUTH":
-            intersection_counts["South_1"] = lane1_count
-            intersection_counts["South_2"] = lane2_count
+            intersection_counts["South_1"] = burst_max_lane1
+            intersection_counts["South_2"] = burst_max_lane2
         elif current_direction == "WEST":
-            intersection_counts["West_1"] = lane1_count
-            intersection_counts["West_2"] = lane2_count
+            intersection_counts["West_1"] = burst_max_lane1
+            intersection_counts["West_2"] = burst_max_lane2
 
-        # Run the saturation checks for the active camera
-        check_saturation(f"{dir_formatted}_1", lane1_count)
-        check_saturation(f"{dir_formatted}_2", lane2_count)
+        # Feed the saturation check function with the current burst max values for this camera's lanes
+        check_saturation(f"{dir_formatted}_1", burst_max_lane1)
+        check_saturation(f"{dir_formatted}_2", burst_max_lane2)
 
         # --- Visual Saturation Alerts ---
         if saturation_tracker[f"{dir_formatted}_1"]["is_full"]:
@@ -182,7 +195,7 @@ def generate_frames():
         if saturation_tracker[f"{dir_formatted}_2"]["is_full"]:
             cvzone.putTextRect(active_img, "L2 SATURATED", (20, 200), scale=2, thickness=2, colorR=(0, 0, 255))
 
-        # Update the system state
+        # Update the system state every frame so the API route can serve it as JSON
         global system_state
         system_state = controller.update(intersection_counts)
         

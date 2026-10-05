@@ -74,6 +74,9 @@ class TrafficController:
             if lane not in active_lanes and counts[lane] > 0:
                 # Accumulate wait time only if there is at least 1 car waiting
                 self.wait_timers[lane] += dt
+            elif lane not in active_lanes and counts[lane] == 0:
+                # Reset wait timer if no cars are waiting
+                self.wait_timers[lane] = 0.0
             elif lane in active_lanes:
                 # Instantly reset timers for lanes currently getting a green light
                 self.wait_timers[lane] = 0.0 
