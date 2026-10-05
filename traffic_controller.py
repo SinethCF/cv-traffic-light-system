@@ -46,18 +46,19 @@ class TrafficController:
         return max(self.MIN_TIME, min(self.MAX_TIME, t_calc))
 
     def get_priorities(self, counts):
-        """Calculates P = w_n*n + w_t*t^2 for all waiting configurations"""
+        """Calculates P = w_n*n + w_t*t^2 using raw visible counts (Not extrapolated)"""
         scores = {}
-        for config_id, active_lanes in self.configs.items():
+        for config_id, candidate_lanes in self.configs.items():
+            
             # Skip the config that already has the green light
             if config_id == self.active_config:
                 continue 
             
             score = 0
-            for lane in active_lanes:
-                n = counts[lane]
+            for lane in candidate_lanes:
+                n = counts[lane] # Priority strictly uses visible count
                 t = self.wait_timers[lane]
-                # Priority formula
+                # Calculates the score for this lane and adds it to the total score for the config
                 score += (self.w_n * n) + (self.w_t * (t ** 2))
             scores[config_id] = score
         return scores
