@@ -142,5 +142,6 @@ class TrafficController:
             "active_config": self.active_config,
             "locked_next": self.locked_next,
             "countdown": max(0, int(self.time_remaining)),
-            "saturation_status": self.is_saturated
+            "saturation_status": self.is_saturated,
+            "wait_timers": self.wait_timers
         }

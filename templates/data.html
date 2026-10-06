@@ -12,132 +12,360 @@
             --text: #f8fafc;
             --green: #22c55e;
             --red: #ef4444;     
+            --gray: #94a3b8;
         }
         body { 
             background-color: var(--bg); 
             color: var(--text); 
             font-family: system-ui, -apple-system, sans-serif; 
             margin: 0; 
-            padding: 1rem; /* Compressed from 2rem */
+            padding: 0; /* Removed padding to allow the header to stretch 100% */
             display: flex;
             flex-direction: column;
             align-items: center;
             height: 100vh;
             box-sizing: border-box;
-            overflow: hidden; /* Strictly prevents vertical scrolling */
+            overflow: hidden; 
         }
-        header {
-            text-align: center;
-            margin-bottom: 0.5rem; /* Compressed from 2rem */
+
+        /* --- NEW: Full-Width Header from Screenshot --- */
+        header { 
+            width: 100%;
+            background-color: #111827; 
+            text-align: center; 
+            padding: 1.5rem 0;
+            margin-bottom: 1.5rem;
+            border-bottom: 3px solid var(--accent); 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.6rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
-        h1 { margin: 0; font-size: 1.6rem; letter-spacing: 1px; }
-        header p { margin: 0.2rem 0 0.5rem 0; font-size: 0.9rem; }
+        h1 { 
+            margin: 0; 
+            font-size: 1.4rem; 
+            letter-spacing: 2px; 
+            text-transform: uppercase; 
+        }
+        .header-badge { 
+            font-size: 0.8rem; 
+            color: #93c5fd; 
+            background-color: rgba(59, 130, 246, 0.15); 
+            padding: 0.4rem 1.2rem; 
+            border-radius: 50px; 
+            letter-spacing: 0.5px;
+        }
         
+        /* --- Master Layout Wrapper --- */
+        .dashboard-wrapper {
+            display: flex;
+            flex-direction: row;
+            gap: 3.5rem; 
+            width: 100%;
+            max-width: 1200px;
+            justify-content: center;
+            align-items: center; 
+            padding: 0 1rem;
+            box-sizing: border-box;
+        }
+
+        .main-content {
+            flex: 1;
+            max-width: 750px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
         .grid-container {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 1rem; /* Compressed from 2rem */
+            gap: 1.5rem; 
             width: 100%;
-            max-width: 800px;
         }
+        
         .node-card {
             background-color: var(--surface);
             border-top: 4px solid var(--accent);
             border-radius: 12px;
-            padding: 0.8rem; /* Compressed from 1.5rem */
+            padding: 1rem; 
             box-shadow: 0 10px 25px rgba(0,0,0,0.5);
             text-align: center;
+            position: relative;
+            transition: border-color 0.3s ease;
         }
-        .node-card h2 {
-            margin: 0;
-            color: var(--accent);
-            letter-spacing: 2px;
-            font-size: 1.2rem;
+        .node-card.processing { border-top: 4px solid var(--red); }
+        
+        .processing-badge {
+            display: none;
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: var(--red);
+            color: white;
+            font-size: 0.75rem;
+            font-weight: bold;
+            padding: 2px 10px;
+            border-radius: 10px;
+            letter-spacing: 1px;
         }
+        .node-card.processing .processing-badge { display: block; }
+        
+        .node-card h2 { margin: 0; color: var(--accent); letter-spacing: 2px; font-size: 1.2rem; }
+        
         .lane-stats {
             display: flex;
             justify-content: space-around;
-            margin-top: 0.5rem; /* Compressed from 1rem */
+            margin-top: 0.5rem; 
             font-size: 1rem;
             font-weight: bold;
         }
-        .lane1 { color: var(--green); }
-        .lane2 { color: var(--red); }
-        .value { 
-            font-size: 2.2rem; /* Scaled down slightly */
-            display: block; 
-            margin-top: 2px; 
-            color: var(--text); 
+        .lane1 h3, .lane2 h3 { margin: 0; font-size: 1rem; }
+        .lane1 h3 { color: var(--green); }
+        .lane2 h3 { color: var(--accent); }
+        
+        .value { font-size: 2.2rem; display: block; margin-top: 2px; color: var(--text); }
+        .wait-time { font-size: 0.85rem; color: var(--gray); margin-top: 4px; font-weight: normal; }
+        
+        .sat-badge {
+            font-size: 0.8rem; 
+            color: var(--red); 
+            font-weight: bold; 
+            margin-top: 4px;
+            visibility: hidden; 
         }
+        .sat-badge.active { visibility: visible; }
+
+        /* --- SIDE PANEL (Configuration Table) --- */
+        .side-panel {
+            width: 320px;
+            background-color: var(--surface);
+            border-radius: 12px;
+            padding: 1rem;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .side-panel h2 {
+            margin: 0;
+            color: var(--text);
+            font-size: 1.1rem;
+            text-align: center;
+            letter-spacing: 1px;
+        }
+        
+        hr.divider {
+            border: 0;
+            height: 1px;
+            background: var(--gray);
+            opacity: 0.2;
+            margin: 0.2rem 0 0.8rem 0;
+            width: 100%;
+        }
+
+        .config-row {
+            background-color: var(--bg);
+            border: 2px solid transparent;
+            border-radius: 8px;
+            padding: 0.8rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+        .config-row .c-id { font-weight: bold; font-size: 1.1rem; color: var(--gray); }
+        .config-row .c-lanes { font-size: 0.85rem; color: var(--gray); }
+        
+        .config-row.active-state { border-color: var(--green); }
+        .config-row.active-state .c-id, .config-row.active-state .c-lanes { color: var(--green); }
+        
+        .config-row.next-state { border-color: var(--accent); }
+        .config-row.next-state .c-id, .config-row.next-state .c-lanes { color: var(--accent); }
     </style>
 </head>
 <body>
 
+    <!-- UPDATED HEADER -->
     <header>
-        <h1>Intersection Data Matrix</h1>
-        <p style="color: #94a3b8;">Real-time dictionary polling active</p>
+        <h1>Intersection Data Visualizer</h1>
+        <div class="header-badge">Real-time telemetry and physical queue estimation</div>
     </header>
 
-    <!-- WIDE CONTROL PANEL WITH COMPRESSED HEIGHT -->
-    <div id="control-panel" style="background: var(--surface); width: 100%; max-width: 800px; padding: 10px; border-radius: 12px; margin-bottom: 1rem; text-align: center; border: 2px solid var(--green); box-sizing: border-box;">
-        <h2 style="color: var(--green); margin: 0; font-size: 1.2rem;">ACTIVE: <span id="active-config">C1</span></h2>
-        <div style="font-size: 3rem; font-weight: bold; margin: 5px 0;" id="countdown-timer">00s</div>
-        <div style="color: var(--accent); font-weight: bold; font-size: 0.9rem;">LOCKED NEXT: <span id="locked-next">C2</span></div>
-    </div>
+    <div class="dashboard-wrapper">
+        <!-- LEFT: MAIN VISUAL FEED -->
+        <div class="main-content">
+            <div id="control-panel" style="background: var(--surface); width: 100%; padding: 10px; border-radius: 12px; margin-bottom: 1rem; text-align: center; border: 2px solid var(--green); box-sizing: border-box;">
+                <h2 style="color: var(--green); margin: 0; font-size: 1.2rem;">ACTIVE: <span id="active-config">C1</span></h2>
+                <div style="font-size: 3rem; font-weight: bold; margin: 5px 0;" id="countdown-timer">00s</div>
+                <div style="color: var(--accent); font-weight: bold; font-size: 0.9rem;">LOCKED NEXT: <span id="locked-next">C2</span></div>
+            </div>
 
-    <div class="grid-container">
-        <!-- NORTH NODE -->
-        <div class="node-card">
-            <h2>NORTH NODE</h2>
-            <div class="lane-stats">
-                <div class="lane1">Lane 1 <span class="value" id="North_1">0</span></div>
-                <div class="lane2">Lane 2 <span class="value" id="North_2">0</span></div>
+            <div class="grid-container">
+                <!-- NORTH NODE -->
+                <div class="node-card" id="card_NORTH">
+                    <div class="processing-badge">PROCESSING</div>
+                    <h2>NORTH APPROACH</h2>
+                    <div class="lane-stats">
+                        <div class="lane1">
+                            <h3>Lane 1</h3>
+                            <span class="value" id="North_1">0</span>
+                            <div class="wait-time" id="Wait_North_1">0s wait</div>
+                            <div class="sat-badge" id="Sat_North_1">SATURATED</div>
+                        </div>
+                        <div class="lane2">
+                            <h3>Lane 2</h3>
+                            <span class="value" id="North_2">0</span>
+                            <div class="wait-time" id="Wait_North_2">0s wait</div>
+                            <div class="sat-badge" id="Sat_North_2">SATURATED</div>
+                        </div>
+                    </div>
+                </div>
+                <!-- EAST NODE -->
+                <div class="node-card" id="card_EAST">
+                    <div class="processing-badge">PROCESSING</div>
+                    <h2>EAST APPROACH</h2>
+                    <div class="lane-stats">
+                        <div class="lane1">
+                            <h3>Lane 1</h3>
+                            <span class="value" id="East_1">0</span>
+                            <div class="wait-time" id="Wait_East_1">0s wait</div>
+                            <div class="sat-badge" id="Sat_East_1">SATURATED</div>
+                        </div>
+                        <div class="lane2">
+                            <h3>Lane 2</h3>
+                            <span class="value" id="East_2">0</span>
+                            <div class="wait-time" id="Wait_East_2">0s wait</div>
+                            <div class="sat-badge" id="Sat_East_2">SATURATED</div>
+                        </div>
+                    </div>
+                </div>
+                <!-- SOUTH NODE -->
+                <div class="node-card" id="card_SOUTH">
+                    <div class="processing-badge">PROCESSING</div>
+                    <h2>SOUTH APPROACH</h2>
+                    <div class="lane-stats">
+                        <div class="lane1">
+                            <h3>Lane 1</h3>
+                            <span class="value" id="South_1">0</span>
+                            <div class="wait-time" id="Wait_South_1">0s wait</div>
+                            <div class="sat-badge" id="Sat_South_1">SATURATED</div>
+                        </div>
+                        <div class="lane2">
+                            <h3>Lane 2</h3>
+                            <span class="value" id="South_2">0</span>
+                            <div class="wait-time" id="Wait_South_2">0s wait</div>
+                            <div class="sat-badge" id="Sat_South_2">SATURATED</div>
+                        </div>
+                    </div>
+                </div>
+                <!-- WEST NODE -->
+                <div class="node-card" id="card_WEST">
+                    <div class="processing-badge">PROCESSING</div>
+                    <h2>WEST APPROACH</h2>
+                    <div class="lane-stats">
+                        <div class="lane1">
+                            <h3>Lane 1</h3>
+                            <span class="value" id="West_1">0</span>
+                            <div class="wait-time" id="Wait_West_1">0s wait</div>
+                            <div class="sat-badge" id="Sat_West_1">SATURATED</div>
+                        </div>
+                        <div class="lane2">
+                            <h3>Lane 2</h3>
+                            <span class="value" id="West_2">0</span>
+                            <div class="wait-time" id="Wait_West_2">0s wait</div>
+                            <div class="sat-badge" id="Sat_West_2">SATURATED</div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-        <!-- EAST NODE -->
-        <div class="node-card">
-            <h2>EAST NODE</h2>
-            <div class="lane-stats">
-                <div class="lane1">Lane 1 <span class="value" id="East_1">0</span></div>
-                <div class="lane2">Lane 2 <span class="value" id="East_2">0</span></div>
+
+        <!-- RIGHT: CONFIGURATION TABLE -->
+        <div class="side-panel">
+            <h2>Configuration Table</h2>
+            <hr class="divider">
+            <div class="config-row" id="row_C1">
+                <div class="c-id">C1</div>
+                <div class="c-lanes">North L2 & South L2</div>
             </div>
-        </div>
-        <!-- SOUTH NODE -->
-        <div class="node-card">
-            <h2>SOUTH NODE</h2>
-            <div class="lane-stats">
-                <div class="lane1">Lane 1 <span class="value" id="South_1">0</span></div>
-                <div class="lane2">Lane 2 <span class="value" id="South_2">0</span></div>
+            <div class="config-row" id="row_C2">
+                <div class="c-id">C2</div>
+                <div class="c-lanes">East L2 & West L2</div>
             </div>
-        </div>
-        <!-- WEST NODE -->
-        <div class="node-card">
-            <h2>WEST NODE</h2>
-            <div class="lane-stats">
-                <div class="lane1">Lane 1 <span class="value" id="West_1">0</span></div>
-                <div class="lane2">Lane 2 <span class="value" id="West_2">0</span></div>
+            <div class="config-row" id="row_C3">
+                <div class="c-id">C3</div>
+                <div class="c-lanes">North L1 & North L2</div>
+            </div>
+            <div class="config-row" id="row_C4">
+                <div class="c-id">C4</div>
+                <div class="c-lanes">South L1 & South L2</div>
+            </div>
+            <div class="config-row" id="row_C5">
+                <div class="c-id">C5</div>
+                <div class="c-lanes">West L1 & West L2</div>
+            </div>
+            <div class="config-row" id="row_C6">
+                <div class="c-id">C6</div>
+                <div class="c-lanes">East L1 & East L2</div>
             </div>
         </div>
     </div>
 
     <script>
+        const allLanes = ["North_1", "North_2", "East_1", "East_2", "South_1", "South_2", "West_1", "West_2"];
+        const allCams = ["NORTH", "EAST", "SOUTH", "WEST"];
+        const allConfigs = ["C1", "C2", "C3", "C4", "C5", "C6"];
+
         async function fetchTrafficData() {
             try {
                 const response = await fetch('/api/counts');
                 const data = await response.json(); 
                 
-                document.getElementById('active-config').innerText = data.state.active_config;
+                // 1. Update State Machine Panel
+                let activeConfig = data.state.active_config;
+                let lockedNext = data.state.locked_next;
+                
+                document.getElementById('active-config').innerText = activeConfig;
                 document.getElementById('countdown-timer').innerText = data.state.countdown + "s";
-                document.getElementById('locked-next').innerText = data.state.locked_next;
+                document.getElementById('locked-next').innerText = lockedNext;
 
-                document.getElementById('North_1').innerText = data.counts.North_1;
-                document.getElementById('North_2').innerText = data.counts.North_2;
-                document.getElementById('East_1').innerText = data.counts.East_1;
-                document.getElementById('East_2').innerText = data.counts.East_2;
-                document.getElementById('South_1').innerText = data.counts.South_1;
-                document.getElementById('South_2').innerText = data.counts.South_2;
-                document.getElementById('West_1').innerText = data.counts.West_1;
-                document.getElementById('West_2').innerText = data.counts.West_2;
+                // 2. Update Configuration Side Panel Highlights
+                allConfigs.forEach(config => {
+                    let row = document.getElementById('row_' + config);
+                    row.classList.remove('active-state', 'next-state');
+                    
+                    if (config === activeConfig) {
+                        row.classList.add('active-state');
+                    } else if (config === lockedNext) {
+                        row.classList.add('next-state');
+                    }
+                });
+
+                // 3. Update Processing Borders
+                allCams.forEach(cam => {
+                    document.getElementById('card_' + cam).classList.remove('processing');
+                });
+                if (data.active_cam) {
+                    document.getElementById('card_' + data.active_cam).classList.add('processing');
+                }
+
+                // 4. Update Counts, Wait Times, and Saturation per lane
+                allLanes.forEach(lane => {
+                    document.getElementById(lane).innerText = Number(data.counts[lane] || 0).toFixed(1);
+                    
+                    let waitTime = Math.floor(data.state.wait_timers[lane] || 0);
+                    document.getElementById('Wait_' + lane).innerText = waitTime + "s wait";
+
+                    let satElement = document.getElementById('Sat_' + lane);
+                    if (data.state.saturation_status && data.state.saturation_status[lane]) {
+                        satElement.classList.add('active');
+                    } else {
+                        satElement.classList.remove('active');
+                    }
+                });
                 
             } catch (error) {
                 console.error("Error fetching traffic data:", error);

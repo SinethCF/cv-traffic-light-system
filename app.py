@@ -11,7 +11,7 @@ app = Flask(__name__)
 model = YOLO('yolo26n_ncnn_model', task='detect')
 # Initialize the state machine globally so the API route can read it
 controller = TrafficController()
-system_state = {"active_config": "C1", "locked_next": "C2", "countdown": 0}
+system_state = {"active_config": "C1", "locked_next": "C2", "countdown": 0, "active_cam_label": "NORTH"}
 
 frame_w, frame_h = 640, 640
 dimensions = (frame_w, frame_h)
@@ -159,8 +159,9 @@ def generate_frames():
             intersection_counts["West_2"] = burst_max_lane2
 
        # Pass the latest counts to the brain to get the updated system state
-        global system_state
+        global system_state, active_cam_label
         system_state = controller.update(intersection_counts)
+        active_cam_label = current_direction
 
         # --- Visual Saturation Alerts ---
         # The display just reads the status and draws the text. The math is hidden.
@@ -218,7 +219,8 @@ def api_counts():
     # We now send both the counts and the state machine data over the API
     return jsonify({
         "counts": intersection_counts,
-        "state": system_state
+        "state": system_state,
+        "active_cam": active_cam_label
     })
 
 if __name__ == "__main__":
