@@ -104,6 +104,11 @@ class TrafficController:
                     safe_time = max(1.0, self.wait_timers[lane])
                     self.fill_rates[lane] = self.MAX_LANE_CAPACITY / safe_time
 
+                # If YOLO corrects a glitch or cars leave on red, cancel the extrapolation!
+                elif counts[lane] < self.MAX_LANE_CAPACITY and self.is_saturated[lane]:
+                    self.is_saturated[lane] = False
+                    self.fill_rates[lane] = 0.0
+
             elif lane not in active_lanes and counts[lane] == 0:
                 # Reset wait timer if no cars are waiting
                 self.wait_timers[lane] = 0.0
