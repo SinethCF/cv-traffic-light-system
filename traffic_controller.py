@@ -9,11 +9,18 @@ class TrafficController:
         self.w_n = 1.0       # Linear weight for vehicle count
         self.w_t = 0.005     # Quadratic weight for wait time
 
+        # --- NEW: LANE CAPACITY ---
+        self.MAX_LANE_CAPACITY = 16.0   # The physical limit of your camera view (equivalent to 16 cars)
+
         # --- 2. LANE MEMORY & TIMERS ---
         self.lanes = ["North_1", "North_2", "East_1", "East_2", 
                       "South_1", "South_2", "West_1", "West_2"]
         # Tracks how long vehicles have been waiting (in seconds)
         self.wait_timers = {lane: 0.0 for lane in self.lanes}
+
+        # --- NEW: SATURATION MEMORY ---
+        self.is_saturated = {lane: False for lane in self.lanes}
+        self.fill_rates = {lane: 0.0 for lane in self.lanes} # Locks in the n/t rate
         
         # --- 3. THE 6 COLLISION-FREE CONFIGURATIONS ---
         self.configs = {
@@ -33,8 +40,20 @@ class TrafficController:
 
     def calculate_green_time(self, active_lanes, counts):
         """Calculates fractional T_green bounded by MIN and MAX"""
-        n_winning = sum(counts[lane] for lane in active_lanes)
-        n_total = sum(counts.values())
+
+        # --- NEW: EXTRAPOLATION ENGINE ---
+        effective_counts = {}
+        for lane in self.lanes:
+            if self.is_saturated[lane]:
+                # Extrapolate n: locked rate * total wait time
+                extrapolated_n = self.fill_rates[lane] * self.wait_timers[lane]
+                # Ensure it never drops below the physical capacity limit
+                effective_counts[lane] = max(self.MAX_LANE_CAPACITY, extrapolated_n)
+            else:
+                effective_counts[lane] = counts[lane]
+
+        n_winning = sum(effective_counts[lane] for lane in active_lanes)
+        n_total = sum(effective_counts.values())
         
         # Prevent division by zero if intersection is totally empty
         if n_total == 0:
@@ -72,15 +91,30 @@ class TrafficController:
         # 1. UPDATE WAIT TIMERS
         active_lanes = self.configs[self.active_config]
         for lane in self.lanes:
+            # Update the saturation status of each lane
             if lane not in active_lanes and counts[lane] > 0:
+
                 # Accumulate wait time only if there is at least 1 car waiting
                 self.wait_timers[lane] += dt
+
+                # --- NEW: SATURATION TRIGGER & RATE LOCK-IN ---
+                if counts[lane] >= self.MAX_LANE_CAPACITY and not self.is_saturated[lane]:
+                    self.is_saturated[lane] = True
+                    # Lock in the rate = Max_Lane_Capacity / wait_time (safeguarding against div by zero)
+                    safe_time = max(1.0, self.wait_timers[lane])
+                    self.fill_rates[lane] = self.MAX_LANE_CAPACITY / safe_time
+
             elif lane not in active_lanes and counts[lane] == 0:
                 # Reset wait timer if no cars are waiting
                 self.wait_timers[lane] = 0.0
+                self.is_saturated[lane] = False
+                self.fill_rates[lane] = 0.0
+
             elif lane in active_lanes:
                 # Instantly reset timers for lanes currently getting a green light
                 self.wait_timers[lane] = 0.0 
+                self.is_saturated[lane] = False
+                self.fill_rates[lane] = 0.0
 
         # 2. TICK DOWN ACTIVE GREEN LIGHT
         self.time_remaining -= dt
@@ -102,5 +136,6 @@ class TrafficController:
         return {
             "active_config": self.active_config,
             "locked_next": self.locked_next,
-            "countdown": max(0, int(self.time_remaining))
+            "countdown": max(0, int(self.time_remaining)),
+            "saturation_status": self.is_saturated
         }

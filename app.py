@@ -64,15 +64,6 @@ VEHICLE_WEIGHTS = {
     5: 3.0,  # Bus takes up 3 car spaces
     7: 3.0   # Truck takes up 3 car spaces
 }
-MAX_LANE_CAPACITY = 16.0  # The physical limit of your camera view (equivalent to 16 cars)
-
-# --- SATURATION TRACKER ---
-saturation_tracker = {
-    "North_1": {"is_full": False}, "North_2": {"is_full": False},
-    "East_1":  {"is_full": False}, "East_2":  {"is_full": False},
-    "South_1": {"is_full": False}, "South_2": {"is_full": False},
-    "West_1":  {"is_full": False}, "West_2":  {"is_full": False}
-}
 
 # Memory bank to store the 8 lane variables continuously 
 intersection_counts = {
@@ -149,24 +140,6 @@ def generate_frames():
         cvzone.putTextRect(active_img, f"Lane 1: {burst_max_lane1:.1f}", (20, 50), scale=2, thickness=2, colorR=(0, 200, 0))
         cvzone.putTextRect(active_img, f"Lane 2: {burst_max_lane2:.1f}", (20, 100), scale=2, thickness=2, colorR=(200, 0, 0))
 
-        # --- RED-LIGHT FILTER & CAPACITY CHECK ---
-        def check_saturation(lane_name, current_capacity):
-            tracker = saturation_tracker[lane_name]
-
-            # RED LIGHT FILTER: Ask the controller which lanes currently have a GREEN light
-            active_green_lanes = controller.configs[system_state["active_config"]]
-
-            # If this lane is green, it's emptying out. Ignore saturation!
-            if lane_name in active_green_lanes:
-                tracker["is_full"] = False
-                return
-            
-            # CAPACITY CHECK: Did the weighted score hit the physical camera limit?
-            if current_capacity >= MAX_LANE_CAPACITY:
-                tracker["is_full"] = True
-            else:
-                tracker["is_full"] = False
-
         # Update the master variables based on which camera is currently active
         current_direction = directions[active_cam_index]
         dir_formatted = current_direction.capitalize()
@@ -185,19 +158,16 @@ def generate_frames():
             intersection_counts["West_1"] = burst_max_lane1
             intersection_counts["West_2"] = burst_max_lane2
 
-        # Feed the saturation check function with the current burst max values for this camera's lanes
-        check_saturation(f"{dir_formatted}_1", burst_max_lane1)
-        check_saturation(f"{dir_formatted}_2", burst_max_lane2)
-
-        # --- Visual Saturation Alerts ---
-        if saturation_tracker[f"{dir_formatted}_1"]["is_full"]:
-            cvzone.putTextRect(active_img, "L1 SATURATED", (20, 150), scale=2, thickness=2, colorR=(0, 0, 255))
-        if saturation_tracker[f"{dir_formatted}_2"]["is_full"]:
-            cvzone.putTextRect(active_img, "L2 SATURATED", (20, 200), scale=2, thickness=2, colorR=(0, 0, 255))
-
-        # Update the system state every frame so the API route can serve it as JSON
+       # Pass the latest counts to the brain to get the updated system state
         global system_state
         system_state = controller.update(intersection_counts)
+
+        # --- Visual Saturation Alerts ---
+        # The display just reads the status and draws the text. The math is hidden.
+        if system_state.get("saturation_status", {}).get(f"{dir_formatted}_1", False):
+            cvzone.putTextRect(active_img, "L1 SATURATED", (20, 150), scale=2, thickness=2, colorR=(0, 0, 255))
+        if system_state.get("saturation_status", {}).get(f"{dir_formatted}_2", False):
+            cvzone.putTextRect(active_img, "L2 SATURATED", (20, 200), scale=2, thickness=2, colorR=(0, 0, 255))
         
         # --- 2x2 GRID ASSEMBLY ---
         grid_frames = []
