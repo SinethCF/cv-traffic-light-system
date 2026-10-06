@@ -410,8 +410,6 @@ The controller continuously maintains and updates the current signal configurati
 | Frame resolution | 640 × 640 |
 | Web server port | 8080 |
 
-The frame rate is a target rather than a guaranteed performance level and depends on hardware, model inference time, video decoding, and the number of feeds processed.
-
 ---
 
 # 📚 Project Goals
