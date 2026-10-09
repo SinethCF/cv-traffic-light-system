@@ -20,6 +20,7 @@ fallback_model = joblib.load('./data/trained_model.pkl')
 # Initialize the state machine globally so the API route can read it
 controller = TrafficController()
 system_state = {"active_config": "C1", "locked_next": "C2", "countdown": 0, "active_cam_label": "NORTH"}
+cam_health_status = {"NORTH": True, "EAST": True, "SOUTH": True, "WEST": True}
 
 frame_w, frame_h = 640, 640
 dimensions = (frame_w, frame_h)
@@ -107,6 +108,11 @@ def generate_frames():
             else:
                 current_frames.append(np.zeros((frame_h, frame_w, 3), dtype=np.uint8))
                 camera_health.append(False)
+
+        # Update the global health dictionary for the API
+        global cam_health_status
+        for i, health in enumerate(camera_health):
+            cam_health_status[directions[i]] = health
 
         active_img = current_frames[active_cam_index]
         is_active_cam_healthy = camera_health[active_cam_index]
@@ -242,7 +248,7 @@ def generate_frames():
                     cvzone.putTextRect(small_frame, f"{dir_label} (PROCESSING)", (135, 25), scale=0.75, thickness=1, colorR=(0, 0, 255))
                 else:
                     cv2.rectangle(small_frame, (0, 0), (320, 320), (0, 140, 255), 6)
-                    cvzone.putTextRect(small_frame, f"{dir_label} (ML PREDICTING)", (120, 25), scale=0.75, thickness=1, colorR=(0, 140, 255))
+                    cvzone.putTextRect(small_frame, f"{dir_label} (ML PREDICTING)", (135, 25), scale=0.75, thickness=1, colorR=(0, 140, 255))
             else:
                 # Inactive cameras are just displayed normally, but we indicate if they are offline
                 if camera_health[i]:
@@ -286,7 +292,8 @@ def api_counts():
     return jsonify({
         "counts": intersection_counts,
         "state": system_state,
-        "active_cam": active_cam_label
+        "active_cam": active_cam_label,
+        "cam_health": cam_health_status
     })
 
 if __name__ == "__main__":

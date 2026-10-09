@@ -19,7 +19,7 @@
             color: var(--text); 
             font-family: system-ui, -apple-system, sans-serif; 
             margin: 0; 
-            padding: 0; /* Removed padding to allow the header to stretch 100% */
+            padding: 0; 
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -28,7 +28,7 @@
             overflow: hidden; 
         }
 
-        /* --- NEW: Full-Width Header from Screenshot --- */
+        /* --- Full-Width Header from Screenshot --- */
         header { 
             width: 100%;
             background-color: #111827; 
@@ -93,9 +93,12 @@
             box-shadow: 0 10px 25px rgba(0,0,0,0.5);
             text-align: center;
             position: relative;
-            transition: border-color 0.3s ease;
+            transition: border-color 0.3s ease, color 0.3s ease;
         }
+        
+        /* --- Dynamic Processing Borders --- */
         .node-card.processing { border-top: 4px solid var(--red); }
+        .node-card.ml-processing { border-top: 4px solid #f69802; }
         
         .processing-badge {
             display: none;
@@ -111,9 +114,11 @@
             border-radius: 10px;
             letter-spacing: 1px;
         }
-        .node-card.processing .processing-badge { display: block; }
         
-        .node-card h2 { margin: 0; color: var(--accent); letter-spacing: 2px; font-size: 1.2rem; }
+        .node-card.processing .processing-badge { display: block; background-color: var(--red); }
+        .node-card.ml-processing .processing-badge { display: block; background-color: #ea580c; }
+        
+        .node-card h2 { margin: 0; color: var(--accent); letter-spacing: 2px; font-size: 1.2rem; transition: color 0.3s ease; }
         
         .lane-stats {
             display: flex;
@@ -188,7 +193,6 @@
 </head>
 <body>
 
-    <!-- UPDATED HEADER -->
     <header>
         <h1>Intersection Data Visualizer</h1>
         <div class="header-badge">Real-time telemetry and physical queue estimation</div>
@@ -344,15 +348,39 @@
                     }
                 });
 
-                // 3. Update Processing Borders
+                // 3. Update Processing Borders and Hardware Health States
                 allCams.forEach(cam => {
-                    document.getElementById('card_' + cam).classList.remove('processing');
+                    let card = document.getElementById('card_' + cam);
+                    let header = card.querySelector('h2');
+                    
+                    // Strip old dynamic classes
+                    card.classList.remove('processing', 'ml-processing');
+                    
+                    // Check hardware health
+                    if (data.cam_health && data.cam_health[cam] === false) {
+                        header.innerText = cam + " APPROACH (OFFLINE)";
+                        header.style.color = "var(--red)";
+                    } else {
+                        header.innerText = cam + " APPROACH";
+                        header.style.color = "var(--accent)";
+                    }
                 });
+
+                // 4. Apply active camera status (Live vs Fallback)
                 if (data.active_cam) {
-                    document.getElementById('card_' + data.active_cam).classList.add('processing');
+                    let activeCard = document.getElementById('card_' + data.active_cam);
+                    let badge = activeCard.querySelector('.processing-badge');
+                    
+                    if (data.cam_health && data.cam_health[data.active_cam] === false) {
+                        activeCard.classList.add('ml-processing');
+                        badge.innerText = "ML PREDICTING";
+                    } else {
+                        activeCard.classList.add('processing');
+                        badge.innerText = "PROCESSING";
+                    }
                 }
 
-                // 4. Update Counts, Wait Times, and Saturation per lane
+                // 5. Update Counts, Wait Times, and Saturation per lane
                 allLanes.forEach(lane => {
                     document.getElementById(lane).innerText = Number(data.counts[lane] || 0).toFixed(1);
                     
