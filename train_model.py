@@ -16,6 +16,9 @@ y = df[['North_1', 'North_2', 'South_1', 'South_2', 'East_1', 'East_2', 'West_1'
 # Replacing day_of_week with one-hot encoding
 x = pd.get_dummies(x, prefix="day_of_week", columns=['day_of_week'])
 
+# Reorder the columns to ennsure 'is_weekend' is the last column
+x = x[['minute_of_day'] + [col for col in x.columns if col.startswith('day_of_week_')] + ['is_weekend']]
+
 # Split the data into training and testing sets
 X_train, X_test, y_train, y_test = train_test_split(x, y, train_size=0.8, random_state=42)
 
