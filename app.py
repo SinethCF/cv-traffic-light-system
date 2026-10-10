@@ -19,7 +19,8 @@ fallback_model = joblib.load('./data/trained_model.pkl')
 
 # Initialize the state machine globally so the API route can read it
 controller = TrafficController()
-system_state = {"active_config": "C1", "locked_next": "C2", "countdown": 0, "active_cam_label": "NORTH"}
+system_state = {"active_config": "C1", "locked_next": "C2", "countdown": 0}
+active_cam_label = "NORTH"
 cam_health_status = {"NORTH": True, "EAST": True, "SOUTH": True, "WEST": True}
 
 frame_w, frame_h = 640, 640
