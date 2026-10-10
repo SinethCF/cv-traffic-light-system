@@ -191,7 +191,8 @@ def process_video_streams():
             }])
 
             # Make predictions using the trained model
-            y_pred = fallback_model.predict(X_live)[0].astype(float)  # Ensure the predictions are float for consistency
+            raw_pred = fallback_model.predict(X_live)[0].astype(float)  # Ensure the predictions are float for consistency
+            y_pred = np.round(raw_pred * 2) / 2.0 # Round to the nearest 0.5 to account 0.5 weights for bicycles
 
             # Update the burst max values based on the model's predictions
             # Filter the predictions to only override the lanes for the failed camera
