@@ -23,6 +23,9 @@ system_state = {"active_config": "C1", "locked_next": "C2", "countdown": 0}
 active_cam_label = "NORTH"
 cam_health_status = {"NORTH": True, "EAST": True, "SOUTH": True, "WEST": True}
 
+# Global variable to hold the latest fully-drawn 2x2 JPEG grid for the web stream
+latest_grid_jpeg = None
+
 frame_w, frame_h = 640, 640
 dimensions = (frame_w, frame_h)
 
@@ -83,7 +86,9 @@ intersection_counts = {
     "West_1": 0,  "West_2": 0
 }
 
-def generate_frames():
+def process_video_streams():
+    global system_state, active_cam_label, cam_health_status, latest_grid_jpeg
+
     active_cam_index = 0
     frames_on_current_cam = 0
     MAX_FRAMES_PER_CAM = 10  
@@ -111,7 +116,6 @@ def generate_frames():
                 camera_health.append(False)
 
         # Update the global health dictionary for the API
-        global cam_health_status
         for i, health in enumerate(camera_health):
             cam_health_status[directions[i]] = health
 
@@ -223,7 +227,6 @@ def generate_frames():
             intersection_counts["West_2"] = burst_max_lane2
 
        # Pass the latest counts to the brain to get the updated system state
-        global system_state, active_cam_label
         system_state = controller.update(intersection_counts)
         active_cam_label = current_direction
 
@@ -265,7 +268,8 @@ def generate_frames():
 
         # Encode the final grid as a JPEG image
         ret, buffer = cv2.imencode('.jpg', final_grid, [cv2.IMWRITE_JPEG_QUALITY, 80])
-        yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
+        if ret:
+            latest_grid_jpeg = buffer.tobytes()
 
         # --- SWITCHER LOGIC ---
         frames_on_current_cam += 1
@@ -273,13 +277,26 @@ def generate_frames():
             active_cam_index = (active_cam_index + 1) % 4
             frames_on_current_cam = 0
 
+        # Micro-sleep to prevent locking up a CPU core entirely
+        time.sleep(0.01)
+
+# Immediately start the AI engine upon running the file
+threading.Thread(target=process_video_streams, daemon=True).start()
+
 @app.route('/')
 def index():
     return render_template('index.html')
 
+def generate_web_stream():
+    # Only yields the pre-computed image from the background thread
+    while True:
+        if latest_grid_jpeg is not None:
+            yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + latest_grid_jpeg + b'\r\n')
+        time.sleep(0.033) # Throttled to ~30 FPS for browser performance
+
 @app.route('/video_feed')
 def video_feed():
-    return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+    return Response(generate_web_stream(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 # --- ROUTE 1: Serves the new sleek HTML grid page ---
 @app.route('/data')
