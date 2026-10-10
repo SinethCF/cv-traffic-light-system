@@ -38,17 +38,24 @@ class TrafficController:
         self.time_remaining = self.MIN_TIME
         self.last_tick = time.time()
 
-    def calculate_green_time(self, active_lanes, counts):
+    def calculate_green_time(self, active_lanes, counts, cam_health_status):
         """Calculates fractional T_green bounded by MIN and MAX"""
 
         # --- NEW: EXTRAPOLATION ENGINE ---
         effective_counts = {}
         for lane in self.lanes:
+            # Extract "NORTH" from "North_1" to check the camera's specific health
+            direction = lane.split('_')[0].upper()
+            
             if self.is_saturated[lane]:
-                # Extrapolate n: locked rate * total wait time
-                extrapolated_n = self.fill_rates[lane] * self.wait_timers[lane]
-                # Ensure it never drops below the physical capacity limit
-                effective_counts[lane] = max(self.MAX_LANE_CAPACITY, extrapolated_n)
+                if cam_health_status[direction]:
+                    # Extrapolate n: locked rate * total wait time
+                    extrapolated_n = self.fill_rates[lane] * self.wait_timers[lane]
+                    # Ensure it never drops below the physical capacity limit
+                    effective_counts[lane] = max(self.MAX_LANE_CAPACITY, extrapolated_n)
+                else:
+                    # OFFLINE ML CAMERA: Cap at MAX_CAP to prevent explosion
+                    effective_counts[lane] = self.MAX_LANE_CAPACITY
             else:
                 effective_counts[lane] = counts[lane]
 
@@ -82,7 +89,7 @@ class TrafficController:
             scores[config_id] = score
         return scores
 
-    def update(self, counts):
+    def update(self, counts, cam_health_status):
         """The main loop triggered every frame to evaluate the state"""
         current_time = time.time()
         dt = current_time - self.last_tick
@@ -131,7 +138,7 @@ class TrafficController:
             
             # Calculate the new time allocation based on exact counts at this millisecond
             new_active_lanes = self.configs[self.active_config]
-            self.time_remaining = self.calculate_green_time(new_active_lanes, counts)
+            self.time_remaining = self.calculate_green_time(new_active_lanes, counts, cam_health_status)
             
             # Run the priority engine on the remaining 5 configs to lock in the new Position 2
             scores = self.get_priorities(counts)

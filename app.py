@@ -227,7 +227,7 @@ def process_video_streams():
             intersection_counts["West_2"] = burst_max_lane2
 
        # Pass the latest counts to the brain to get the updated system state
-        system_state = controller.update(intersection_counts)
+        system_state = controller.update(intersection_counts, cam_health_status)
         active_cam_label = current_direction
 
         # --- Visual Saturation Alerts ---
