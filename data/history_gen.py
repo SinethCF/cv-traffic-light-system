@@ -39,19 +39,19 @@ master_vol = np.where(is_weekend == 1, weekend_profile, weekday_profile)
 ns_vol = master_vol * 6.0
 ew_vol = master_vol * 4.0
 
-# 5. Generate Poisson noise to simulate real, discrete cars arriving, and clip to camera capacity (18)
+# 5. Generate Poisson noise (multiplied and divided by 2 to create 0.5 increments) and clip to camera capacity (18)
 data = {
     'minute_of_day': minute_of_day,
     'day_of_week': day_of_week,
     'is_weekend': is_weekend,
-    'North_1': np.clip(np.random.poisson(ns_vol), 0, 18),
-    'North_2': np.clip(np.random.poisson(ns_vol * 0.9), 0, 18),
-    'South_1': np.clip(np.random.poisson(ns_vol), 0, 18),
-    'South_2': np.clip(np.random.poisson(ns_vol * 0.9), 0, 18),
-    'East_1':  np.clip(np.random.poisson(ew_vol), 0, 18),
-    'East_2':  np.clip(np.random.poisson(ew_vol * 0.8), 0, 18),
-    'West_1':  np.clip(np.random.poisson(ew_vol), 0, 18),
-    'West_2':  np.clip(np.random.poisson(ew_vol * 0.8), 0, 18)
+    'North_1': np.clip(np.random.poisson(ns_vol * 2) / 2.0, 0, 18),
+    'North_2': np.clip(np.random.poisson(ns_vol * 1.8) / 2.0, 0, 18),
+    'South_1': np.clip(np.random.poisson(ns_vol * 2) / 2.0, 0, 18),
+    'South_2': np.clip(np.random.poisson(ns_vol * 1.8) / 2.0, 0, 18),
+    'East_1':  np.clip(np.random.poisson(ew_vol * 2) / 2.0, 0, 18),
+    'East_2':  np.clip(np.random.poisson(ew_vol * 1.6) / 2.0, 0, 18),
+    'West_1':  np.clip(np.random.poisson(ew_vol * 2) / 2.0, 0, 18),
+    'West_2':  np.clip(np.random.poisson(ew_vol * 1.6) / 2.0, 0, 18)
 }
 
 # 6. Compile and Export
