@@ -12,6 +12,10 @@ class TrafficController:
         # --- NEW: LANE CAPACITY ---
         self.MAX_LANE_CAPACITY = 16.0   # The physical limit of your camera view (equivalent to 16 cars)
 
+        # --- NEW: HARDWARE PHASE TIMERS ---
+        self.YELLOW_STOP_TIME = 3.0  # Phase 1: Green -> Yellow (Stopping)
+        self.YELLOW_PREP_TIME = 2.0  # Phase 2: Red -> Yellow (Preparing)
+
         # --- 2. LANE MEMORY & TIMERS ---
         self.lanes = ["North_1", "North_2", "East_1", "East_2", 
                       "South_1", "South_2", "West_1", "West_2"]
@@ -35,6 +39,8 @@ class TrafficController:
         # --- 4. STATE MACHINE INITIALIZATION ---
         self.active_config = "C1"      # Position 1 (Currently Green)
         self.locked_next = "C2"        # Position 2 (Locked in for next Green)
+        self.phase = "GREEN"                # Current phase: GREEN, YELLOW, or RED
+        self.next_green_time = 0.0      # Stores the math result during the preparation phase
         self.time_remaining = self.MIN_TIME
         self.last_tick = time.time()
 
@@ -133,22 +139,59 @@ class TrafficController:
 
         # 3. THE HANDOVER TRIGGER (When countdown hits 0)
         if self.time_remaining <= 0:
-            # Shift Position 2 into Position 1
-            self.active_config = self.locked_next
+            if self.phase == "GREEN":
+                # Phase 1: End green, trigger the yellow stopping phase
+                self.phase = "STOPPING"
+                self.time_remaining = self.YELLOW_STOP_TIME
+
+            elif self.phase == "STOPPING":
+                # Phase 2: Start preparation phase. Shift configs and run the math.
+                self.phase = "PREPARING"
+                self.time_remaining = self.YELLOW_PREP_TIME
+
+                # Shift Position 2 into Position 1
+                self.active_config = self.locked_next
+                
+                # Pre-calculate the time and priorities for the upcoming green light
+                new_active_lanes = self.configs[self.active_config]
+                self.next_green_time = self.calculate_green_time(new_active_lanes, counts, cam_health_status)
+                
+                # Run the priority engine on the remaining 5 configs to lock in the new Position 2
+                scores = self.get_priorities(counts)
+                self.locked_next = max(scores, key=scores.get) 
+
+            elif self.phase == "PREPARING":
+                # Phase 3: Preparation finished. Drop Yellow, turn Green.
+                self.phase = "GREEN"
+                self.time_remaining = self.next_green_time
+
+        # 4. 7-SEGMENT DISPLAY LOGIC TRANSLATION
+        display_active = "--"
+        display_next = "--"
+
+        if self.phase == "GREEN":
+            # Active shows exact time left, Next shows time + 3s stopping buffer
+            display_active = str(max(0, int(self.time_remaining)))
+            display_next = str(max(0, int(self.time_remaining + self.YELLOW_STOP_TIME)))
+        
+        elif self.phase == "STOPPING":
+            # Active lane is stopping (display blank), Next lane ticks down the 3 seconds
+            display_active = "--"
+            display_next = str(max(0, int(self.time_remaining)))
             
-            # Calculate the new time allocation based on exact counts at this millisecond
-            new_active_lanes = self.configs[self.active_config]
-            self.time_remaining = self.calculate_green_time(new_active_lanes, counts, cam_health_status)
-            
-            # Run the priority engine on the remaining 5 configs to lock in the new Position 2
-            scores = self.get_priorities(counts)
-            self.locked_next = max(scores, key=scores.get) 
+        elif self.phase == "PREPARING":
+            # Both displays remain completely blank during the 2s red-to-green preparation
+            display_active = "--"
+            display_next = "--"
 
         # Return the clean system state to app.py
         return {
             "active_config": self.active_config,
             "locked_next": self.locked_next,
+            "phase": self.phase,
             "countdown": max(0, int(self.time_remaining)),
             "saturation_status": self.is_saturated,
+            "display_active": display_active,
+            "display_next": display_next,
             "wait_timers": self.wait_timers
         }
