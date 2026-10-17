@@ -166,8 +166,8 @@ class TrafficController:
                 self.time_remaining = self.next_green_time
 
         # 4. 7-SEGMENT DISPLAY LOGIC TRANSLATION
-        display_active = "--"
-        display_next = "--"
+        display_active = "  "
+        display_next = "  "
 
         if self.phase == "GREEN":
             # Active shows exact time left, Next shows time + 3s stopping buffer
@@ -176,13 +176,13 @@ class TrafficController:
         
         elif self.phase == "STOPPING":
             # Active lane is stopping (display blank), Next lane ticks down the 3 seconds
-            display_active = "--"
+            display_active = str(max(0, int(self.time_remaining)))
             display_next = str(max(0, int(self.time_remaining)))
             
         elif self.phase == "PREPARING":
             # Both displays remain completely blank during the 2s red-to-green preparation
-            display_active = "--"
-            display_next = "--"
+            display_active = str(max(0, int(self.time_remaining)))
+            display_next = "  "
 
         # Return the clean system state to app.py
         return {
