@@ -11,4 +11,7 @@ sleep 5
 # Launch the logger using the .venv Python
 nohup .venv/bin/python data_logger.py > logger.log 2>&1 &
 
+# Launch the physical hardware controller
+nohup .venv/bin/python hardware_controller.py > hardware.log 2>&1 &
+
 echo "[$(date)] Startup complete."

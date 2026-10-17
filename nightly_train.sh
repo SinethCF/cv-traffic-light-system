@@ -6,8 +6,12 @@ echo "[$(date)] Initiating nightly AI retraining..."
 
 # 1. Safely kill the running Python processes to free up RAM and the camera bus
 pkill -f app.py
-pkill -f data_logger.py
-sleep 2 
+pkill -f data_logger.py 
+
+# Intentionally leave hardware_controller.py running here. 
+# It will detect the AI is dead and flash yellow for the duration of the training!
+
+sleep 2
 
 # 2. Train the new model using the training script (Virtual environment should be activated)
 echo "Training new XGBoost model..."
