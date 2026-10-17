@@ -315,7 +315,7 @@ def api_counts():
         "state": system_state,
         "active_cam": active_cam_label,
         "cam_health": cam_health_status,
-        "hearbeat": yolo_heartbeat
+        "heartbeat": yolo_heartbeat
     })
 
 if __name__ == "__main__":
