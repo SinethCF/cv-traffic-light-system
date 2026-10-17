@@ -22,6 +22,7 @@ controller = TrafficController()
 system_state = {"active_config": "C1", "locked_next": "C2", "countdown": 0}
 active_cam_label = "NORTH"
 cam_health_status = {"NORTH": True, "EAST": True, "SOUTH": True, "WEST": True}
+yolo_heartbeat = time.time()
 
 # Global variable to hold the latest fully-drawn 2x2 JPEG grid for the web stream
 latest_grid_jpeg = None
@@ -87,7 +88,7 @@ intersection_counts = {
 }
 
 def process_video_streams():
-    global system_state, active_cam_label, cam_health_status, latest_grid_jpeg
+    global system_state, active_cam_label, cam_health_status, latest_grid_jpeg, yolo_heartbeat
 
     active_cam_index = 0
     frames_on_current_cam = 0
@@ -278,6 +279,7 @@ def process_video_streams():
             active_cam_index = (active_cam_index + 1) % 4
             frames_on_current_cam = 0
 
+        yolo_heartbeat = time.time()  # Update the heartbeat timestamp to indicate YOLO is alive
         # Micro-sleep to prevent locking up a CPU core entirely
         time.sleep(0.01)
 
@@ -312,7 +314,8 @@ def api_counts():
         "counts": intersection_counts,
         "state": system_state,
         "active_cam": active_cam_label,
-        "cam_health": cam_health_status
+        "cam_health": cam_health_status,
+        "hearbeat": yolo_heartbeat
     })
 
 if __name__ == "__main__":
