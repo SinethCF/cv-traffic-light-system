@@ -174,10 +174,13 @@ try:
                 yellow_all_hex = 0x00
             
             # Blast the identical blink command to all 4 banks instantly
-            bus.write_byte_data(MCP_1, GPIOA, yellow_all_hex)
-            bus.write_byte_data(MCP_1, GPIOB, yellow_all_hex)
-            bus.write_byte_data(MCP_2, GPIOA, yellow_all_hex)
-            bus.write_byte_data(MCP_2, GPIOB, yellow_all_hex)
+            try:    # TRY EXCEPT for testing only! (Test 1)
+                bus.write_byte_data(MCP_1, GPIOA, yellow_all_hex)
+                bus.write_byte_data(MCP_1, GPIOB, yellow_all_hex)
+                bus.write_byte_data(MCP_2, GPIOA, yellow_all_hex)
+                bus.write_byte_data(MCP_2, GPIOB, yellow_all_hex)
+            except OSError:
+                pass  # If the MCP23017 is unreachable, we just skip this cycle
 
             # Turn off all 7-Segment displays entirely
             blank_screen = [0x00, 0x00, 0x00, 0x00]
@@ -196,14 +199,17 @@ try:
             # Update MCP_1 (North and South Lanes)
             n_bank = get_lane_hex("North_1", 1, active, phase) | get_lane_hex("North_2", 2, active, phase)
             s_bank = get_lane_hex("South_1", 1, active, phase) | get_lane_hex("South_2", 2, active, phase)
-            bus.write_byte_data(MCP_1, GPIOA, n_bank)
-            bus.write_byte_data(MCP_1, GPIOB, s_bank)
 
             # Update MCP_2 (East and West Lanes)
             e_bank = get_lane_hex("East_1", 1, active, phase) | get_lane_hex("East_2", 2, active, phase)
             w_bank = get_lane_hex("West_1", 1, active, phase) | get_lane_hex("West_2", 2, active, phase)
-            bus.write_byte_data(MCP_2, GPIOA, e_bank)
-            bus.write_byte_data(MCP_2, GPIOB, w_bank)
+            try:    # TRY EXCEPT for testing only! (Test 2)
+                bus.write_byte_data(MCP_1, GPIOA, n_bank)
+                bus.write_byte_data(MCP_1, GPIOB, s_bank)
+                bus.write_byte_data(MCP_2, GPIOA, e_bank)
+                bus.write_byte_data(MCP_2, GPIOB, w_bank)
+            except OSError:
+                pass  # If the MCP23017 is unreachable, we just skip this cycle
 
             # Next, update TM1637 Displays (4 Modules total)
             # North Display (Digits 1,2 = North_1 | Digits 3,4 = North_2)
