@@ -73,7 +73,8 @@ displays = {
 }
 for d in displays.values():
     d.brightness = 7
-    d.write([0, 0, 0, 0]) # Clear screens
+    # Write blank characters, but turn ON the colon (0x80) on the second digit
+    d.write([0x00, 0x80, 0x00, 0x00])
 
 # --- HELPER FUNCTIONS ---
 def get_lane_hex(lane, position, active_config, phase):
@@ -182,8 +183,8 @@ try:
             except OSError:
                 pass  # If the MCP23017 is unreachable, we just skip this cycle
 
-            # Turn off all 7-Segment displays entirely
-            blank_screen = [0x00, 0x00, 0x00, 0x00]
+            # Turn off all 7-Segment display numbers, but keep the colon ON
+            blank_screen = [0x00, 0x80, 0x00, 0x00]
             for d in displays.values():
                 d.write(blank_screen)
         
@@ -214,18 +215,22 @@ try:
             # Next, update TM1637 Displays (4 Modules total)
             # North Display (Digits 1,2 = North_1 | Digits 3,4 = North_2)
             n_segs = get_display_segments("North_1", active, nxt, d_act, d_nxt) + get_display_segments("North_2", active, nxt, d_act, d_nxt)
+            n_segs[1] |= 0x80  # Force the colon ON
             displays["North"].write(n_segs)
 
             # South Display (Digits 1,2 = South_1 | Digits 3,4 = South_2)
             s_segs = get_display_segments("South_1", active, nxt, d_act, d_nxt) + get_display_segments("South_2", active, nxt, d_act, d_nxt)
+            s_segs[1] |= 0x80  # Force the colon ON
             displays["South"].write(s_segs)
 
             # East Display (Digits 1,2 = East_1 | Digits 3,4 = East_2)
             e_segs = get_display_segments("East_1", active, nxt, d_act, d_nxt) + get_display_segments("East_2", active, nxt, d_act, d_nxt)
+            e_segs[1] |= 0x80  # Force the colon ON
             displays["East"].write(e_segs)
 
             # West Display (Digits 1,2 = West_1 | Digits 3,4 = West_2)
             w_segs = get_display_segments("West_1", active, nxt, d_act, d_nxt) + get_display_segments("West_2", active, nxt, d_act, d_nxt)
+            w_segs[1] |= 0x80  # Force the colon ON
             displays["West"].write(w_segs)
 
         # Polling rate: 10 times per second
