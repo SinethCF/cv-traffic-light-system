@@ -177,23 +177,23 @@ class TrafficController:
                 self.continuous_lanes = []
 
         # 4. 7-SEGMENT DISPLAY LOGIC TRANSLATION
-        display_active = "  "
-        display_next = "  "
+        target_active = 0.0
+        target_next = 0.0
 
         if self.phase == "GREEN":
-            # Active shows exact time left, Next shows time + 3s stopping buffer
-            display_active = str(min(99, max(0, int(self.time_remaining))))
-            display_next = str(min(99, max(0, int(self.time_remaining + self.YELLOW_STOP_TIME))))
+            # Active shows time until green ends, Next shows time until the next green starts + 3s stopping buffer
+            target_active = current_time + self.time_remaining
+            target_next = current_time + self.time_remaining + self.YELLOW_STOP_TIME
         
         elif self.phase == "STOPPING":
-            # Active lane is stopping (display blank), Next lane ticks down the 3 seconds
-            display_active = str(min(99, max(0, int(self.time_remaining))))
-            display_next = str(min(99, max(0, int(self.time_remaining))))
+            # Active lane is stopping, Next lane ticks down the 3 seconds
+            target_active = current_time + self.time_remaining
+            target_next = current_time + self.time_remaining
             
         elif self.phase == "PREPARING":
-            # Both displays remain completely blank during the 2s red-to-green preparation
-            display_active = str(min(99, max(0, int(self.time_remaining))))
-            display_next = "  "
+            # Target_next display remain blank during the 2s red-to-green preparation
+            target_active = current_time + self.time_remaining
+            # target_next is ignored by the hardware during this phase
 
         # --- NEW: COMPUTE HARDWARE OVERRIDES FOR OVERLAPPING LANES ---
         future_overlaps = list(set(self.configs[self.active_config]) & set(self.configs[self.locked_next]))
@@ -214,8 +214,8 @@ class TrafficController:
             "phase": self.phase,
             "countdown": max(0, int(self.time_remaining)),
             "saturation_status": self.is_saturated,
-            "display_active": display_active,
-            "display_next": display_next,
+            "target_active": target_active,     # Absolute epoch time
+            "target_next": target_next,        # Absolute epoch time
             "wait_timers": self.wait_timers,
             "blank_lanes": blank_lanes,     # Overrides for 7-segment display (keep blank)
             "green_holds": green_holds      # Overrides for MCP23017 (keep solid Green)

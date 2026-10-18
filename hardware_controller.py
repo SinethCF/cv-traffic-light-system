@@ -1,5 +1,6 @@
 import time
 import requests
+import threading
 from smbus2 import SMBus
 import tm1637
 
@@ -128,19 +129,21 @@ last_known_heartbeat = 0.0
 fallback_active = False
 
 # --- SAFE DEFAULT STATE ---
-state = {
+shared_state = {
     "active_config": "C1", "locked_next": "C2", 
-    "phase": "RED", "display_active": "  ", "display_next": "  "
+    "phase": "RED", "target_active": time.time(), "target_next": time.time(),
+    "blank_lanes": [], "green_holds": []
 }
 
-try:
+def fetch_state_thread():
+    """Thread to continuously fetch the latest state from the AI Brain."""
+    global shared_state, last_successful_ping, last_known_heartbeat, fallback_active
     while True:
         # Attempt to fetch the latest state from the AI Brain
         try:
             # Fetch Latest State from the AI Brain
             response = requests.get(API_URL, timeout=1.0)
             data = response.json()
-            state = data['state']
 
             # Extract the new heartbeat stamp
             current_heartbeat = data.get('heartbeat', 0.0)
@@ -151,16 +154,29 @@ try:
                 last_successful_ping = time.time()
                 last_known_heartbeat = current_heartbeat
 
+                # Update the shared state with the new data
+                shared_state = data['state']
+
                 if fallback_active:
                     print("AI Connection Restored & YOLO Active! Returning to normal operation.")
                     fallback_active = False
 
-        except Exception as e:
+        except Exception:
             # No longer 'pass' blindly. We just let the loop evaluate the timeout below.
             pass
 
+        # Poll the server 10 times per second
+        time.sleep(0.1)
+
+# Boot the network thread in the background
+threading.Thread(target=fetch_state_thread, daemon=True).start()
+
+# --- MAIN LOOP ---
+try:
+    while True:
         # TIMER EVALUATION FOR FALLBACK MODE
-        time_since_last = time.time() - last_successful_ping
+        now = time.time()
+        time_since_last = now - last_successful_ping
 
         if time_since_last > SAFE_TIMEOUT:
             # --- CRITICAL HARDWARE FALLBACK MODE ---
@@ -170,7 +186,7 @@ try:
 
             # Create a 1-second toggling blinker using system time
             # int() grabs the current whole second, % 2 toggles it every second.
-            is_blink_on = int(time.time()) % 2 == 0
+            is_blink_on = int(now) % 2 == 0
             
             # Combine Lane 1 Yellow and Lane 2 Yellow if blinking ON, else send 0x00 (OFF)
             if is_blink_on:
@@ -194,15 +210,22 @@ try:
         
         else:
             # --- NORMAL OPERATION MODE ---
-            active = state['active_config']
-            nxt = state['locked_next']
-            phase = state['phase']
-            d_act = state['display_active']
-            d_nxt = state['display_next']
+            active = shared_state['active_config']
+            nxt = shared_state['locked_next']
+            phase = shared_state['phase']
 
             # Extract the override commands (Defaults to empty list if missing)
-            blank_lanes = state.get('blank_lanes', [])
-            green_holds = state.get('green_holds', [])
+            blank_lanes = shared_state.get('blank_lanes', [])
+            green_holds = shared_state.get('green_holds', [])
+
+            # 1. Local String Formatting (Independent of AI freezes!)
+            # Calculates seconds remaining based strictly on the hardware clock, capped at 99
+            d_act = str(min(99, max(0, int(shared_state['target_active'] - now))))
+
+            if phase == "PREPARING":
+                d_nxt = "  "  # During PREPARING, the next display is blank
+            else:
+                d_nxt = str(min(99, max(0, int(shared_state['target_next'] - now))))
 
             # First, update the MCP23017 boards with the correct LED states for each lane
             # Update MCP_1 (North and South Lanes)
@@ -212,6 +235,7 @@ try:
             # Update MCP_2 (East and West Lanes)
             e_bank = get_lane_hex("East_1", 1, active, phase, green_holds) | get_lane_hex("East_2", 2, active, phase, green_holds)
             w_bank = get_lane_hex("West_1", 1, active, phase, green_holds) | get_lane_hex("West_2", 2, active, phase, green_holds)
+
             try:    # TRY EXCEPT for testing only! (Test 2)
                 bus.write_byte_data(MCP_1, GPIOA, n_bank)
                 bus.write_byte_data(MCP_1, GPIOB, s_bank)
@@ -220,29 +244,29 @@ try:
             except OSError:
                 pass  # If the MCP23017 is unreachable, we just skip this cycle
 
-            # Next, update TM1637 Displays (4 Modules total)
+            # Next, update TM1637 Displays (Left = Lane 2 | Right = Lane 1)
             # North Display (Digits 1,2 = North_1 | Digits 3,4 = North_2)
-            n_segs = get_display_segments("North_1", active, nxt, d_act, d_nxt, blank_lanes) + get_display_segments("North_2", active, nxt, d_act, d_nxt, blank_lanes)
+            n_segs = get_display_segments("North_2", active, nxt, d_act, d_nxt, blank_lanes) + get_display_segments("North_1", active, nxt, d_act, d_nxt, blank_lanes)
             n_segs[1] |= 0x80  # Force the colon ON
             displays["North"].write(n_segs)
 
             # South Display (Digits 1,2 = South_1 | Digits 3,4 = South_2)
-            s_segs = get_display_segments("South_1", active, nxt, d_act, d_nxt, blank_lanes) + get_display_segments("South_2", active, nxt, d_act, d_nxt, blank_lanes)
+            s_segs = get_display_segments("South_2", active, nxt, d_act, d_nxt, blank_lanes) + get_display_segments("South_1", active, nxt, d_act, d_nxt, blank_lanes)
             s_segs[1] |= 0x80  # Force the colon ON
             displays["South"].write(s_segs)
 
             # East Display (Digits 1,2 = East_1 | Digits 3,4 = East_2)
-            e_segs = get_display_segments("East_1", active, nxt, d_act, d_nxt, blank_lanes) + get_display_segments("East_2", active, nxt, d_act, d_nxt, blank_lanes)
+            e_segs = get_display_segments("East_2", active, nxt, d_act, d_nxt, blank_lanes) + get_display_segments("East_1", active, nxt, d_act, d_nxt, blank_lanes)
             e_segs[1] |= 0x80  # Force the colon ON
             displays["East"].write(e_segs)
 
             # West Display (Digits 1,2 = West_1 | Digits 3,4 = West_2)
-            w_segs = get_display_segments("West_1", active, nxt, d_act, d_nxt, blank_lanes) + get_display_segments("West_2", active, nxt, d_act, d_nxt, blank_lanes)
+            w_segs = get_display_segments("West_2", active, nxt, d_act, d_nxt, blank_lanes) + get_display_segments("West_1", active, nxt, d_act, d_nxt, blank_lanes)
             w_segs[1] |= 0x80  # Force the colon ON
             displays["West"].write(w_segs)
 
-        # Polling rate: 10 times per second
-        time.sleep(0.1)
+        # UI Refresh Rate: Runs blazing fast at 20 times per second
+        time.sleep(0.05)
 
 except KeyboardInterrupt:
     print("\nShutting down hardware... clearing all pins.")
