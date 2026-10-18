@@ -240,9 +240,12 @@ except KeyboardInterrupt:
     print("\nShutting down hardware... clearing all pins.")
 
 finally:
-    bus.write_byte_data(MCP_1, GPIOA, 0x00)
-    bus.write_byte_data(MCP_1, GPIOB, 0x00)
-    bus.write_byte_data(MCP_2, GPIOA, 0x00)
-    bus.write_byte_data(MCP_2, GPIOB, 0x00)
+    try:
+        bus.write_byte_data(MCP_1, GPIOA, 0x00)
+        bus.write_byte_data(MCP_1, GPIOB, 0x00)
+        bus.write_byte_data(MCP_2, GPIOA, 0x00)
+        bus.write_byte_data(MCP_2, GPIOB, 0x00)
+    except Exception as e:
+        print(f"Error while clearing MCP23017: {e}")
     for d in displays.values():
         d.write([0, 0, 0, 0])
