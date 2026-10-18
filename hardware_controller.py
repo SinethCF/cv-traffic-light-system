@@ -77,10 +77,12 @@ for d in displays.values():
     d.write([0x00, 0x80, 0x00, 0x00])
 
 # --- HELPER FUNCTIONS ---
-def get_lane_hex(lane, position, active_config, phase):
+def get_lane_hex(lane, position, active_config, phase, green_holds):
     """Determines the color for a lane and returns its hex pin value."""
     # Determine the required color based on the current state
-    if lane in CONFIGS[active_config]:
+    if lane in green_holds:     # First priority: Override to solid green if in the green_holds list
+        color = "GREEN"
+    elif lane in CONFIGS[active_config]:
         if phase == "GREEN": color = "GREEN"
         elif phase == "STOPPING": color = "YELLOW"
         elif phase == "PREPARING": color = "RED_YELLOW"
@@ -100,9 +102,11 @@ def get_lane_hex(lane, position, active_config, phase):
         if color == "RED_YELLOW": return L2_RED | L2_YEL
         return L2_RED
 
-def get_display_segments(lane, active_config, locked_next, display_active, display_next):
+def get_display_segments(lane, active_config, locked_next, display_active, display_next, blank_lanes):
     """Converts the JSON text into a 2-byte array for half of a TM1637 screen."""
-    if lane in CONFIGS[active_config]:
+    if lane in blank_lanes:
+        text = "  "  # Force blank for lanes in the blank_lanes override
+    elif lane in CONFIGS[active_config]:
         text = str(display_active)
     elif lane in CONFIGS[locked_next]:
         text = str(display_next)
@@ -196,14 +200,18 @@ try:
             d_act = state['display_active']
             d_nxt = state['display_next']
 
+            # Extract the override commands (Defaults to empty list if missing)
+            blank_lanes = state.get('blank_lanes', [])
+            green_holds = state.get('green_holds', [])
+
             # First, update the MCP23017 boards with the correct LED states for each lane
             # Update MCP_1 (North and South Lanes)
-            n_bank = get_lane_hex("North_1", 1, active, phase) | get_lane_hex("North_2", 2, active, phase)
-            s_bank = get_lane_hex("South_1", 1, active, phase) | get_lane_hex("South_2", 2, active, phase)
+            n_bank = get_lane_hex("North_1", 1, active, phase, green_holds) | get_lane_hex("North_2", 2, active, phase, green_holds)
+            s_bank = get_lane_hex("South_1", 1, active, phase, green_holds) | get_lane_hex("South_2", 2, active, phase, green_holds)
 
             # Update MCP_2 (East and West Lanes)
-            e_bank = get_lane_hex("East_1", 1, active, phase) | get_lane_hex("East_2", 2, active, phase)
-            w_bank = get_lane_hex("West_1", 1, active, phase) | get_lane_hex("West_2", 2, active, phase)
+            e_bank = get_lane_hex("East_1", 1, active, phase, green_holds) | get_lane_hex("East_2", 2, active, phase, green_holds)
+            w_bank = get_lane_hex("West_1", 1, active, phase, green_holds) | get_lane_hex("West_2", 2, active, phase, green_holds)
             try:    # TRY EXCEPT for testing only! (Test 2)
                 bus.write_byte_data(MCP_1, GPIOA, n_bank)
                 bus.write_byte_data(MCP_1, GPIOB, s_bank)
@@ -214,22 +222,22 @@ try:
 
             # Next, update TM1637 Displays (4 Modules total)
             # North Display (Digits 1,2 = North_1 | Digits 3,4 = North_2)
-            n_segs = get_display_segments("North_1", active, nxt, d_act, d_nxt) + get_display_segments("North_2", active, nxt, d_act, d_nxt)
+            n_segs = get_display_segments("North_1", active, nxt, d_act, d_nxt, blank_lanes) + get_display_segments("North_2", active, nxt, d_act, d_nxt, blank_lanes)
             n_segs[1] |= 0x80  # Force the colon ON
             displays["North"].write(n_segs)
 
             # South Display (Digits 1,2 = South_1 | Digits 3,4 = South_2)
-            s_segs = get_display_segments("South_1", active, nxt, d_act, d_nxt) + get_display_segments("South_2", active, nxt, d_act, d_nxt)
+            s_segs = get_display_segments("South_1", active, nxt, d_act, d_nxt, blank_lanes) + get_display_segments("South_2", active, nxt, d_act, d_nxt, blank_lanes)
             s_segs[1] |= 0x80  # Force the colon ON
             displays["South"].write(s_segs)
 
             # East Display (Digits 1,2 = East_1 | Digits 3,4 = East_2)
-            e_segs = get_display_segments("East_1", active, nxt, d_act, d_nxt) + get_display_segments("East_2", active, nxt, d_act, d_nxt)
+            e_segs = get_display_segments("East_1", active, nxt, d_act, d_nxt, blank_lanes) + get_display_segments("East_2", active, nxt, d_act, d_nxt, blank_lanes)
             e_segs[1] |= 0x80  # Force the colon ON
             displays["East"].write(e_segs)
 
             # West Display (Digits 1,2 = West_1 | Digits 3,4 = West_2)
-            w_segs = get_display_segments("West_1", active, nxt, d_act, d_nxt) + get_display_segments("West_2", active, nxt, d_act, d_nxt)
+            w_segs = get_display_segments("West_1", active, nxt, d_act, d_nxt, blank_lanes) + get_display_segments("West_2", active, nxt, d_act, d_nxt, blank_lanes)
             w_segs[1] |= 0x80  # Force the colon ON
             displays["West"].write(w_segs)
 

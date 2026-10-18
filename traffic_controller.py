@@ -25,7 +25,10 @@ class TrafficController:
         # --- NEW: SATURATION MEMORY ---
         self.is_saturated = {lane: False for lane in self.lanes}
         self.fill_rates = {lane: 0.0 for lane in self.lanes} # Locks in the n/t rate
-        
+
+        # --- NEW: CONTINUOUS FLOW MEMORY ---
+        self.continuous_lanes = [] # Stores overlapping lanes during transitions
+
         # --- 3. THE 6 COLLISION-FREE CONFIGURATIONS ---
         self.configs = {
             "C1": ["North_2", "South_2"],
@@ -144,6 +147,12 @@ class TrafficController:
                 self.phase = "STOPPING"
                 self.time_remaining = self.YELLOW_STOP_TIME
 
+                # --- NEW: SET INTERSECTION ---
+                # Find common lanes between current Green and upcoming Green
+                current_set = set(self.configs[self.active_config])
+                next_set = set(self.configs[self.locked_next])
+                self.continuous_lanes = list(current_set & next_set)
+
             elif self.phase == "STOPPING":
                 # Phase 2: Start preparation phase. Shift configs and run the math.
                 self.phase = "PREPARING"
@@ -164,6 +173,8 @@ class TrafficController:
                 # Phase 3: Preparation finished. Drop Yellow, turn Green.
                 self.phase = "GREEN"
                 self.time_remaining = self.next_green_time
+                # --- NEW: CLEAR CONTINUOUS FLOW MEMORY ---
+                self.continuous_lanes = []
 
         # 4. 7-SEGMENT DISPLAY LOGIC TRANSLATION
         display_active = "  "
@@ -171,18 +182,30 @@ class TrafficController:
 
         if self.phase == "GREEN":
             # Active shows exact time left, Next shows time + 3s stopping buffer
-            display_active = str(max(0, int(self.time_remaining)))
-            display_next = str(max(0, int(self.time_remaining + self.YELLOW_STOP_TIME)))
+            display_active = str(min(99, max(0, int(self.time_remaining))))
+            display_next = str(min(99, max(0, int(self.time_remaining + self.YELLOW_STOP_TIME))))
         
         elif self.phase == "STOPPING":
             # Active lane is stopping (display blank), Next lane ticks down the 3 seconds
-            display_active = str(max(0, int(self.time_remaining)))
-            display_next = str(max(0, int(self.time_remaining)))
+            display_active = str(min(99, max(0, int(self.time_remaining))))
+            display_next = str(min(99, max(0, int(self.time_remaining))))
             
         elif self.phase == "PREPARING":
             # Both displays remain completely blank during the 2s red-to-green preparation
-            display_active = str(max(0, int(self.time_remaining)))
+            display_active = str(min(99, max(0, int(self.time_remaining))))
             display_next = "  "
+
+        # --- NEW: COMPUTE HARDWARE OVERRIDES FOR OVERLAPPING LANES ---
+        future_overlaps = list(set(self.configs[self.active_config]) & set(self.configs[self.locked_next]))
+        
+        if self.phase == "GREEN":
+            # Blank out the timer early for lanes that will get an extended Green
+            blank_lanes = future_overlaps
+            green_holds = []
+        elif self.phase == "STOPPING" or self.phase == "PREPARING":
+            # Force the transition lanes to stay solid Green and keep timers blank
+            blank_lanes = self.continuous_lanes
+            green_holds = self.continuous_lanes
 
         # Return the clean system state to app.py
         return {
@@ -193,5 +216,7 @@ class TrafficController:
             "saturation_status": self.is_saturated,
             "display_active": display_active,
             "display_next": display_next,
-            "wait_timers": self.wait_timers
+            "wait_timers": self.wait_timers,
+            "blank_lanes": blank_lanes,     # Overrides for 7-segment display (keep blank)
+            "green_holds": green_holds      # Overrides for MCP23017 (keep solid Green)
         }
