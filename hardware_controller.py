@@ -195,13 +195,10 @@ try:
                 yellow_all_hex = 0x00
             
             # Blast the identical blink command to all 4 banks instantly
-            try:    # TRY EXCEPT for testing only! (Test 1)
-                bus.write_byte_data(MCP_1, GPIOA, yellow_all_hex)
-                bus.write_byte_data(MCP_1, GPIOB, yellow_all_hex)
-                bus.write_byte_data(MCP_2, GPIOA, yellow_all_hex)
-                bus.write_byte_data(MCP_2, GPIOB, yellow_all_hex)
-            except OSError:
-                pass  # If the MCP23017 is unreachable, we just skip this cycle
+            bus.write_byte_data(MCP_1, GPIOA, yellow_all_hex)
+            bus.write_byte_data(MCP_1, GPIOB, yellow_all_hex)
+            bus.write_byte_data(MCP_2, GPIOA, yellow_all_hex)
+            bus.write_byte_data(MCP_2, GPIOB, yellow_all_hex)
 
             # Turn off all 7-Segment display numbers, but keep the colon ON
             blank_screen = [0x00, 0x80, 0x00, 0x00]
@@ -236,31 +233,28 @@ try:
             e_bank = get_lane_hex("East_1", 1, active, phase, green_holds) | get_lane_hex("East_2", 2, active, phase, green_holds)
             w_bank = get_lane_hex("West_1", 1, active, phase, green_holds) | get_lane_hex("West_2", 2, active, phase, green_holds)
 
-            try:    # TRY EXCEPT for testing only! (Test 2)
-                bus.write_byte_data(MCP_1, GPIOA, n_bank)
-                bus.write_byte_data(MCP_1, GPIOB, s_bank)
-                bus.write_byte_data(MCP_2, GPIOA, e_bank)
-                bus.write_byte_data(MCP_2, GPIOB, w_bank)
-            except OSError:
-                pass  # If the MCP23017 is unreachable, we just skip this cycle
+            bus.write_byte_data(MCP_1, GPIOA, n_bank)
+            bus.write_byte_data(MCP_1, GPIOB, s_bank)
+            bus.write_byte_data(MCP_2, GPIOA, e_bank)
+            bus.write_byte_data(MCP_2, GPIOB, w_bank)
 
             # Next, update TM1637 Displays (Left = Lane 2 | Right = Lane 1)
-            # North Display (Digits 1,2 = North_1 | Digits 3,4 = North_2)
+            # North Display (Digits 1,2 = North_2 | Digits 3,4 = North_1)
             n_segs = get_display_segments("North_2", active, nxt, d_act, d_nxt, blank_lanes) + get_display_segments("North_1", active, nxt, d_act, d_nxt, blank_lanes)
             n_segs[1] |= 0x80  # Force the colon ON
             displays["North"].write(n_segs)
 
-            # South Display (Digits 1,2 = South_1 | Digits 3,4 = South_2)
+            # South Display (Digits 1,2 = South_2 | Digits 3,4 = South_1)
             s_segs = get_display_segments("South_2", active, nxt, d_act, d_nxt, blank_lanes) + get_display_segments("South_1", active, nxt, d_act, d_nxt, blank_lanes)
             s_segs[1] |= 0x80  # Force the colon ON
             displays["South"].write(s_segs)
 
-            # East Display (Digits 1,2 = East_1 | Digits 3,4 = East_2)
+            # East Display (Digits 1,2 = East_2 | Digits 3,4 = East_1)
             e_segs = get_display_segments("East_2", active, nxt, d_act, d_nxt, blank_lanes) + get_display_segments("East_1", active, nxt, d_act, d_nxt, blank_lanes)
             e_segs[1] |= 0x80  # Force the colon ON
             displays["East"].write(e_segs)
 
-            # West Display (Digits 1,2 = West_1 | Digits 3,4 = West_2)
+            # West Display (Digits 1,2 = West_2 | Digits 3,4 = West_1)
             w_segs = get_display_segments("West_2", active, nxt, d_act, d_nxt, blank_lanes) + get_display_segments("West_1", active, nxt, d_act, d_nxt, blank_lanes)
             w_segs[1] |= 0x80  # Force the colon ON
             displays["West"].write(w_segs)
