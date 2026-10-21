@@ -9,10 +9,10 @@ import tm1637
 # The two MCPs will use the same address, however connected to different ports.
 # MCP1 to control North and South lanes, and MCP2 to control East and West lanes.
 # MCP1 connected to GPIO 2 (SDA) and GPIO 3 (SCL), whereas MCP2 connected to GPIO 20 (SDA) and GPIO 21 (SCL).
-# MCP1 (0x20) -> North_1 (A0 = Red, A1 = Yellow, A2 = Green), North_2 (A3 = Red, A4 = Yellow, A5 = Green)
-# MCP1 (0x20) -> South_1 (B0 = Red, B1 = Yellow, B2 = Green), South_2 (B3 = Red, B4 = Yellow, B5 = Green)
-# MCP2 (0x20) -> East_1 (A0 = Red, A1 = Yellow, A2 = Green), East_2 (A3 = Red, A4 = Yellow, A5 = Green)
-# MCP2 (0x20) -> West_1 (B0 = Red, B1 = Yellow, B2 = Green), West_2 (B3 = Red, B4 = Yellow, B5 = Green)
+# MCP1 (0x20) -> North_1 (A0 = Red, A1 = Yellow, A2 = Green), North_2 (A5 = Red, A6 = Yellow, A7 = Green)
+# MCP1 (0x20) -> South_1 (B0 = Red, B1 = Yellow, B2 = Green), South_2 (B5 = Red, B6 = Yellow, B7 = Green)
+# MCP2 (0x20) -> East_1 (A0 = Red, A1 = Yellow, A2 = Green), East_2 (A5 = Red, A6 = Yellow, A7 = Green)
+# MCP2 (0x20) -> West_1 (B0 = Red, B1 = Yellow, B2 = Green), West_2 (B5 = Red, B6 = Yellow, B7 = Green)
 
 # The TM1637 7-segment displays are connected to GPIO pins (CLK, DIO) on the Raspberry Pi to display countdown timers for each lane.
 
@@ -29,14 +29,14 @@ IODIRB = 0x01   # Direction register for Bank B (0 = Output, 1 = Input)
 GPIOA  = 0x12   # Register for Bank A (Write)
 GPIOB  = 0x13   # Register for Bank B (Write)
 
-# LED Hex Values (Wired to Pins 0,1,2 for Lane 1 & Pins 3,4,5 for Lane 2)
+# LED Hex Values (Wired to Pins 0,1,2 for Lane 1 & Pins 5,6,7 for Lane 2)
 L1_RED = 0x01
 L1_YEL = 0x02
 L1_GRN = 0x04
 
-L2_RED = 0x08
-L2_YEL = 0x10
-L2_GRN = 0x20
+L2_RED = 0x20
+L2_YEL = 0x40
+L2_GRN = 0x80
 
 # TM1637 7-Segment Hex Map (Used to build custom 4-digit arrays safely)
 SEGMENTS = {
