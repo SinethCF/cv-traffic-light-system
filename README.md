@@ -5,7 +5,7 @@ Smart Intersection Monitor is a computer-vision-based prototype for adaptive tra
 
 The repository also includes a Flask dashboard, an auxiliary machine-learning model for estimating traffic when a video source is unavailable, a traffic-data logger, and an optional Raspberry Pi hardware controller for LED traffic signals and countdown displays.
 
-> **Project status:** This is an experimental/academic prototype. Its signal configurations, camera estimates, timing logic, and hardware fallback behavior are not certified for controlling public-road traffic. See [Safety and limitations](#-safety-and-limitations) before connecting hardware.
+> **Project status:** This is an experimental/academic prototype. Its signal configurations, camera estimates, timing logic, and hardware fallback behavior are not certified for controlling public-road traffic.
 
 **Technologies:** Python · YOLO26n · NCNN · OpenCV · NumPy · cvzone · Flask · scikit-learn · XGBoost · Raspberry Pi (optional)
 
